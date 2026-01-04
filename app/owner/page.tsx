@@ -751,7 +751,7 @@ export default function OwnerPage() {
                 {/* Pricing featured by - Clickable, redirects to Plans tab */}
                 <div
                   onClick={() => setActiveTab("plans")}
-                  style={{
+          style={{
                     marginTop: 20,
                     paddingTop: 20,
                     borderTop: "1px solid rgba(255, 255, 255, 0.1)",

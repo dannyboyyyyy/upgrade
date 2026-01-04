@@ -2,8 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import { getEnv } from "../lib/env";
 
 export const dynamic = "force-dynamic";
+
+// Environment variables for checkout URLs (loaded at module level)
+const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
+const PREMIUM_YEARLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL");
+const PRO_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL");
+const PRO_YEARLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL");
 
 type UpgradeOption = {
   title: string;
@@ -370,22 +377,22 @@ export default function Page() {
                   }}
                   onClick={() => {
                   // Priority: Use plan-specific checkout URL, fallback to environment variables
-                  let url = isYearly
+                  let url: string | undefined = isYearly
                     ? plan.yearly_checkout_url
                     : plan.monthly_checkout_url;
                   
                   // If no plan-specific URL, try to determine plan type and use env vars
-                  if (!url) {
+                  if (!url && plan.title) {
                     // Try to match plan title to Premium or Pro
                     const planTitle = plan.title.toLowerCase();
                     if (planTitle.includes("premium")) {
                       url = isYearly
-                        ? process.env.NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL
-                        : process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
+                        ? PREMIUM_YEARLY_PURCHASE_URL
+                        : PREMIUM_MONTHLY_PURCHASE_URL;
                     } else if (planTitle.includes("pro")) {
                       url = isYearly
-                        ? process.env.NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL
-                        : process.env.NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL;
+                        ? PRO_YEARLY_PURCHASE_URL
+                        : PRO_MONTHLY_PURCHASE_URL;
                     }
                   }
                   
