@@ -57,35 +57,8 @@ export default function OwnerPage() {
     logo_url: "",
     brand_color: "#ff7a00",
   });
-  // Check owner access and redirect if not owner
-  useEffect(() => {
-    const checkOwnerAccess = async () => {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const whopToken = urlParams.get("token") || localStorage.getItem("whop_token");
-        
-        const response = await fetch("/api/whop/check-owner", {
-          headers: {
-            "x-whop-token": whopToken || "",
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (!data.isOwner) {
-            // Not an owner, redirect to upgrade page
-            window.location.href = "/upgrade";
-            return;
-          }
-        }
-      } catch (err) {
-        console.error("Error checking owner access:", err);
-        // On error, allow access (fail open for now)
-      }
-    };
-    
-    checkOwnerAccess();
-  }, []);
+  // Note: Owner page is accessible to all users - no access restrictions
+  // Whop handles authentication and authorization through tokens
 
   // Verify Whop user and get plan permissions (MUST RUN FIRST - CRITICAL)
   useEffect(() => {
