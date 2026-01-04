@@ -744,34 +744,57 @@ export default function OwnerPage() {
                   {plan === "free" ? "Current Plan" : "Select Plan"}
                 </button>
                 
-                {/* Pricing featured by */}
-                <div style={{
-            marginTop: 16,
-                  paddingTop: 16,
-                  borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 6,
-                }}>
+                {/* Pricing featured by - Clickable, redirects to Plans tab */}
+                <div
+                  onClick={() => setActiveTab("plans")}
+                  style={{
+                    marginTop: 20,
+                    paddingTop: 20,
+                    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 10,
+                    cursor: "pointer",
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = "0.8";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = "1";
+                  }}
+                >
                   <p style={{
-                    fontSize: 11,
-                    color: "rgba(255, 255, 255, 0.5)",
+                    fontSize: 13,
+                    color: "rgba(255, 255, 255, 0.6)",
                     margin: 0,
+                    fontWeight: 500,
                   }}>
                     Pricing featured by
                   </p>
                   {brandSettings.logo_url ? (
                     <div style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 10,
+                      width: 70,
+                      height: 70,
+                      borderRadius: 12,
                       overflow: "hidden",
                       background: "rgba(255, 255, 255, 0.05)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                    }}>
+                      border: `2px solid ${brandSettings.brand_color}40`,
+                      transition: "transform 0.2s, border-color 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.05)";
+                      e.currentTarget.style.borderColor = brandSettings.brand_color;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.borderColor = `${brandSettings.brand_color}40`;
+                    }}
+                    >
                       <img
                         src={brandSettings.logo_url}
                         alt="Logo"
@@ -784,17 +807,29 @@ export default function OwnerPage() {
                     </div>
                   ) : (
                     <div style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 10,
+                      width: 70,
+                      height: 70,
+                      borderRadius: 12,
                       background: "rgba(255, 255, 255, 0.05)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                    }}>
+                      border: `2px solid ${brandSettings.brand_color}40`,
+                      transition: "transform 0.2s, border-color 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.05)";
+                      e.currentTarget.style.borderColor = brandSettings.brand_color;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.borderColor = `${brandSettings.brand_color}40`;
+                    }}
+                    >
                       <span style={{
-                        fontSize: 20,
-                        color: "rgba(255, 255, 255, 0.3)",
+                        fontSize: 28,
+                        color: brandSettings.brand_color,
+                        fontWeight: 600,
                       }}>N</span>
                     </div>
                   )}
