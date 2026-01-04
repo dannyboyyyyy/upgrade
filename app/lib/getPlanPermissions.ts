@@ -36,6 +36,10 @@ const PLAN_RULES = {
   },
 } as const;
 
+/**
+ * Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
+ * This function resolves permissions based on the user's active Whop plan.
+ */
 export function getPlanPermissions(plan: "free" | "premium" | "pro"): PlanPermissions {
   const rules = PLAN_RULES[plan];
   

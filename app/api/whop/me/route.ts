@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
     // Get user's plan from Whop
     const plan = await getUserPlan(userId);
     
+    // Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
     // In Whop, users who access via dashboard context are owners
     // For this app, all authenticated users with valid tokens are considered owners
     // Members are unauthenticated users (free tier)
-    // This can be refined based on your specific Whop app configuration
     
     return NextResponse.json({ 
       role: "owner",

@@ -57,15 +57,12 @@ export default function OwnerPage() {
     logo_url: "",
     brand_color: "#ff7a00",
   });
-  // Note: Owner page is accessible to all users - no access restrictions
-  // Whop handles authentication and authorization through tokens
-
-  // Verify Whop user and get plan permissions (MUST RUN FIRST - CRITICAL)
+  // Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
+  // Verify owner status and redirect if not owner
   useEffect(() => {
-    const verifyWhopUser = async () => {
+    const checkOwnerAccess = async () => {
       try {
         // Get Whop token from URL params or localStorage (Whop provides this)
-        // Support both x-whop-token and x-whop-user-token
         const urlParams = new URLSearchParams(window.location.search);
         const whopToken = urlParams.get("token") || localStorage.getItem("whop_token");
         
@@ -74,6 +71,28 @@ export default function OwnerPage() {
           localStorage.setItem("whop_token", whopToken);
         }
         
+        // Verify owner status via server-side API
+        const ownerResponse = await fetch("/api/whop/me", {
+          headers: {
+            "x-whop-user-token": whopToken || "",
+            "x-whop-token": whopToken || "",
+          },
+        });
+        
+        if (ownerResponse.ok) {
+          const ownerData = await ownerResponse.json();
+          if (ownerData.role !== "owner") {
+            // Not an owner - redirect to upgrade page
+            window.location.href = "/upgrade";
+            return;
+          }
+        } else {
+          // Failed to verify - redirect to upgrade
+          window.location.href = "/upgrade";
+          return;
+        }
+        
+        // Owner verified - get plan permissions
         const response = await fetch("/api/whop/verify", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -107,24 +126,13 @@ export default function OwnerPage() {
           setPermissions(freePermissions);
         }
       } catch (err) {
-        console.error("Error verifying Whop user:", err);
-        // Default to free on error
-        setPlan("free");
-        const freePermissions = {
-          plan: "free" as const,
-          maxPlans: 1,
-          canUseMonthly: true,
-          canUseYearly: false,
-          showUpgradeBranding: true,
-          canCustomizeColor: false,
-          canCustomizeLogo: false,
-          hasPrioritySupport: false,
-        };
-        setPermissions(freePermissions);
+        console.error("Error checking owner access:", err);
+        // On error, redirect to upgrade (fail secure)
+        window.location.href = "/upgrade";
       }
     };
     
-    verifyWhopUser();
+    checkOwnerAccess();
   }, []);
 
   // Hent eksisterende data fra Supabase (after permissions are loaded)
@@ -1002,7 +1010,7 @@ export default function OwnerPage() {
                     </li>
                     <li style={{ padding: "6px 0", color: "#fff", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ color: brandSettings.brand_color }}>✓</span>
-                      <span>Monthly & yearly plans</span>
+                      <span>Monthly plans only</span>
                     </li>
                     <li style={{ padding: "6px 0", color: "#fff", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ color: brandSettings.brand_color }}>✓</span>
@@ -1016,9 +1024,8 @@ export default function OwnerPage() {
                 <button
                   onClick={() => {
                     // Redirect to Whop checkout for Premium using environment variables
-                    const premiumUrl = isYearly 
-                      ? process.env.NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL
-                      : process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
+                    // Premium only supports monthly (yearly explicitly disabled)
+                    const premiumUrl = process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
                     if (premiumUrl) {
                       window.location.href = premiumUrl;
                     } else {

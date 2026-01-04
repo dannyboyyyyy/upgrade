@@ -42,10 +42,12 @@ export default function Page() {
   const [permissions, setPermissions] = useState<{
     showUpgradeBranding: boolean;
   }>({ showUpgradeBranding: true });
+  const [isOwner, setIsOwner] = useState(false);
   const [isYearly, setIsYearly] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Verify Whop user and get plan (for branding display)
+  // Also check if user is owner to show Dashboard button
   useEffect(() => {
     const verifyWhopUser = async () => {
       try {
@@ -57,6 +59,20 @@ export default function Page() {
           localStorage.setItem("whop_token", whopToken);
         }
         
+        // Check owner status
+        const ownerResponse = await fetch("/api/whop/me", {
+          headers: {
+            "x-whop-user-token": whopToken || "",
+            "x-whop-token": whopToken || "",
+          },
+        });
+        
+        if (ownerResponse.ok) {
+          const ownerData = await ownerResponse.json();
+          setIsOwner(ownerData.role === "owner");
+        }
+        
+        // Get plan and permissions
         const response = await fetch("/api/whop/verify", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -78,6 +94,7 @@ export default function Page() {
         // Default to free on error
         setPlan("free");
         setPermissions({ showUpgradeBranding: true });
+        setIsOwner(false);
       }
     };
     
@@ -214,6 +231,40 @@ export default function Page() {
         }
       `}</style>
       <div style={styles.container}>
+        {/* Dashboard button - Only visible to owners */}
+        {isOwner && (
+          <div style={{ 
+            position: "absolute", 
+            top: 20, 
+            right: 20,
+            zIndex: 1000
+          }}>
+            <a
+              href="/owner"
+              style={{
+                display: "inline-block",
+                padding: "12px 24px",
+                background: brandSettings.brand_color,
+                color: "#fff",
+                textDecoration: "none",
+                borderRadius: 10,
+                fontWeight: 600,
+                fontSize: 14,
+                transition: "opacity 0.2s",
+                border: `1px solid ${brandSettings.brand_color}40`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.9";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+              }}
+            >
+              Dashboard
+            </a>
+          </div>
+        )}
+
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           {brandSettings.logo_url && (
             <img
@@ -555,6 +606,7 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     maxWidth: 1200,
     margin: "0 auto",
+    position: "relative",
   },
   logo: {
     maxWidth: 50,
