@@ -44,16 +44,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's company role from Whop API
-    // Check if user has "owner" or "admin" role in their company
+    // Determine ownership STRICTLY from company role
+    // Valid owner roles: "owner" or "admin"
+    // If role is missing, unknown, or request fails → isOwner = false
     try {
       // Use Whop SDK to retrieve user information
-      // The user object contains role information that indicates ownership
       const user = await whopsdk.users.retrieve(userId);
       
-      // Check user's role - valid owner roles: "owner" or "admin"
+      // Check user's company role - valid owner roles: "owner" or "admin"
       // Members have no company role or different role (e.g., "member", "customer")
       // The exact property name may vary - check common properties
       const userRole = (user as any)?.company_role || (user as any)?.role || (user as any)?.user_role || null;
+      
+      // Ownership logic MUST be: isOwner = role === "owner" || role === "admin"
+      // If role is missing or unknown → isOwner = false
       const isOwner = userRole === "owner" || userRole === "admin";
       const role: "owner" | "admin" | "member" = isOwner 
         ? (userRole === "admin" ? "admin" : "owner") 
@@ -66,8 +70,8 @@ export async function GET(request: NextRequest) {
       });
     } catch (userError) {
       console.error("Error fetching user role:", userError);
-      // If we can't determine role, default to member (secure default)
-      // Members must never access owner functionality
+      // If role is missing, unknown, or request fails → isOwner = false
+      // Do NOT infer ownership from token, subscription, userId, or query params
       return NextResponse.json({ 
         isOwner: false,
         role: "member",

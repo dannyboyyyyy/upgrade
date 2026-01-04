@@ -62,7 +62,8 @@ export default function Page() {
           localStorage.setItem("whop_token", whopToken);
         }
         
-        // Check owner status (validates company role server-side)
+        // Fetch ownership status from /api/whop/me
+        // Determine ownership STRICTLY from company role (server-side only)
         const ownerResponse = await fetch("/api/whop/me", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -72,11 +73,12 @@ export default function Page() {
         
         if (ownerResponse.ok) {
           const ownerData = await ownerResponse.json();
-          // Show Dashboard button ONLY if isOwner === true
-          // Members must NEVER see or infer dashboard existence
+          // Render Dashboard button ONLY if isOwner === true (strict check)
+          // No truthy checks, no optional chaining fallbacks
+          // If role is missing, unknown, or request fails → isOwner = false
           setIsOwner(ownerData.isOwner === true);
         } else {
-          // Failed to verify - not an owner
+          // Request failed - ownership cannot be confirmed → isOwner = false
           setIsOwner(false);
         }
         
@@ -102,6 +104,7 @@ export default function Page() {
         // Default to free on error
         setPlan("free");
         setPermissions({ showUpgradeBranding: true });
+        // If request fails, ownership cannot be confirmed → isOwner = false
         setIsOwner(false);
       }
     };
@@ -239,8 +242,8 @@ export default function Page() {
         }
       `}</style>
       <div style={styles.container}>
-        {/* Dashboard button - Only visible to owners */}
-        {isOwner && (
+        {/* Dashboard button is rendered exclusively for Whop owners (company role owner/admin) and only on /upgrade */}
+        {isOwner === true && (
           <div style={{ 
             position: "absolute", 
             top: 20, 
