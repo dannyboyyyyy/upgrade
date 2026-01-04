@@ -5,6 +5,7 @@ export type PlanPermissions = {
   canUseYearly: boolean;
   showUpgradeBranding: boolean;
   canCustomizeColor: boolean;
+  canCustomizeLogo: boolean;
   hasPrioritySupport: boolean;
 };
 
@@ -45,6 +46,7 @@ export function getPlanPermissions(plan: "free" | "premium" | "pro"): PlanPermis
     canUseYearly: rules.allowYearly,
     showUpgradeBranding: rules.showUpgradeBranding,
     canCustomizeColor: rules.customBrandColor,
+    canCustomizeLogo: false, // Logo customization not available on any plan (reserved for future)
     hasPrioritySupport: rules.prioritySupport,
   };
 }
