@@ -58,10 +58,23 @@ export default function OwnerPage() {
     brand_color: "#ff7a00",
   });
   // Members only ever access /upgrade
-  // Owners control app configuration via /owner
-  // App plan permissions apply exclusively to owners
-  // Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
-  // Verify owner status server-side and redirect if not owner
+  // Owners configure the app via /owner
+  // Ownership is enforced server-side via Whop
+  //
+  // /owner: kun for owners/admins
+  // - app-konfigurasjon
+  // - plan-styring
+  // - branding
+  // - limits
+  //
+  // Members:
+  // - kan aldri konfigurere app
+  // - kan aldri påvirke plans
+  // - kan aldri se dashboard
+  //
+  // Absolutt beskyttelse: valider ownership server-side via /api/whop/me
+  // Hvis isOwner !== true: redirect umiddelbart til /upgrade
+  // Fail-secure: ved enhver feil → redirect
   useEffect(() => {
     const checkOwnerAccess = async () => {
       try {

@@ -2,17 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { whopsdk } from "@/app/lib/whop-sdk";
 
 /**
- * Get current user's role and ownership status
+ * Get current user's role and ownership status (SERVER-SIDE, KILDE TIL SANNHET)
  * Used for role-based routing and access control
  * 
  * Members only ever access /upgrade
- * Owners control app configuration via /owner
- * App plan permissions apply exclusively to owners
+ * Owners configure the app via /owner
+ * Ownership is enforced server-side via Whop
  * 
  * Returns:
- * - isOwner: boolean (true if user has "owner" or "admin" company role)
+ * - isOwner: boolean (true ONLY if role === "owner" OR role === "admin")
  * - role: "owner" | "admin" | "member"
  * - userId: Whop user ID if authenticated
+ * 
+ * isOwner === true kun hvis:
+ *   role === "owner" ELLER
+ *   role === "admin"
+ * 
+ * Ved feil, manglende token eller ukjent rolle → isOwner: false
  */
 export async function GET(request: NextRequest) {
   try {
