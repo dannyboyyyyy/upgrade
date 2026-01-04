@@ -5,47 +5,47 @@ export type PlanPermissions = {
   canUseYearly: boolean;
   showUpgradeBranding: boolean;
   canCustomizeColor: boolean;
-  canCustomizeLogo: boolean;
   hasPrioritySupport: boolean;
 };
 
-export function getPlanPermissions(plan: "free" | "premium" | "pro"): PlanPermissions {
-  if (plan === "pro") {
-    return {
-      plan: "pro",
-      maxPlans: Infinity,
-      canUseMonthly: true,
-      canUseYearly: true,
-      showUpgradeBranding: false,
-      canCustomizeColor: true,
-      canCustomizeLogo: true,
-      hasPrioritySupport: true,
-    };
-  }
-
-  if (plan === "premium") {
-    return {
-      plan: "premium",
-      maxPlans: 2,
-      canUseMonthly: true,
-      canUseYearly: true,
-      showUpgradeBranding: false,
-      canCustomizeColor: true,
-      canCustomizeLogo: false,
-      hasPrioritySupport: false,
-    };
-  }
-
-  // Free plan - strict permissions only
-  return {
-    plan: "free",
+/**
+ * Plan rules - single source of truth for all plan permissions
+ */
+const PLAN_RULES = {
+  free: {
     maxPlans: 1,
-    canUseMonthly: true,
-    canUseYearly: false,
+    allowYearly: false,
     showUpgradeBranding: true,
-    canCustomizeColor: false,
-    canCustomizeLogo: false,
-    hasPrioritySupport: false,
+    customBrandColor: false,
+    prioritySupport: false,
+  },
+  premium: {
+    maxPlans: 2,
+    allowYearly: false, // ⛔ yearly explicitly disabled
+    showUpgradeBranding: false,
+    customBrandColor: true,
+    prioritySupport: false,
+  },
+  pro: {
+    maxPlans: Infinity,
+    allowYearly: true,
+    showUpgradeBranding: false,
+    customBrandColor: true,
+    prioritySupport: true,
+  },
+} as const;
+
+export function getPlanPermissions(plan: "free" | "premium" | "pro"): PlanPermissions {
+  const rules = PLAN_RULES[plan];
+  
+  return {
+    plan,
+    maxPlans: rules.maxPlans,
+    canUseMonthly: true, // All plans support monthly
+    canUseYearly: rules.allowYearly,
+    showUpgradeBranding: rules.showUpgradeBranding,
+    canCustomizeColor: rules.customBrandColor,
+    hasPrioritySupport: rules.prioritySupport,
   };
 }
 
