@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://whop.com https://*.whop.com;",
+            value: "frame-ancestors https://whop.com https://*.whop.com;",
           },
         ],
       },
