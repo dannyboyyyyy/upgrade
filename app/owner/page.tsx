@@ -57,8 +57,11 @@ export default function OwnerPage() {
     logo_url: "",
     brand_color: "#ff7a00",
   });
+  // Members only ever access /upgrade
+  // Owners control app configuration via /owner
+  // App plan permissions apply exclusively to owners
   // Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
-  // Verify owner status and redirect if not owner
+  // Verify owner status server-side and redirect if not owner
   useEffect(() => {
     const checkOwnerAccess = async () => {
       try {
@@ -71,7 +74,7 @@ export default function OwnerPage() {
           localStorage.setItem("whop_token", whopToken);
         }
         
-        // Verify owner status via server-side API
+        // Verify owner status via server-side API (validates company role)
         const ownerResponse = await fetch("/api/whop/me", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -81,13 +84,14 @@ export default function OwnerPage() {
         
         if (ownerResponse.ok) {
           const ownerData = await ownerResponse.json();
-          if (ownerData.role !== "owner") {
+          // Block ALL non-owners, regardless of subscription
+          if (!ownerData.isOwner) {
             // Not an owner - redirect to upgrade page
             window.location.href = "/upgrade";
             return;
           }
         } else {
-          // Failed to verify - redirect to upgrade
+          // Failed to verify - redirect to upgrade (secure default)
           window.location.href = "/upgrade";
           return;
         }

@@ -46,8 +46,11 @@ export default function Page() {
   const [isYearly, setIsYearly] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Members only ever access /upgrade
+  // Owners control app configuration via /owner
+  // App plan permissions apply exclusively to owners
   // Verify Whop user and get plan (for branding display)
-  // Also check if user is owner to show Dashboard button
+  // Check if user is owner to show Dashboard button (only owners see Dashboard)
   useEffect(() => {
     const verifyWhopUser = async () => {
       try {
@@ -59,7 +62,7 @@ export default function Page() {
           localStorage.setItem("whop_token", whopToken);
         }
         
-        // Check owner status
+        // Check owner status (validates company role server-side)
         const ownerResponse = await fetch("/api/whop/me", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -69,7 +72,12 @@ export default function Page() {
         
         if (ownerResponse.ok) {
           const ownerData = await ownerResponse.json();
-          setIsOwner(ownerData.role === "owner");
+          // Show Dashboard button ONLY if isOwner === true
+          // Members must NEVER see or infer dashboard existence
+          setIsOwner(ownerData.isOwner === true);
+        } else {
+          // Failed to verify - not an owner
+          setIsOwner(false);
         }
         
         // Get plan and permissions

@@ -37,8 +37,11 @@ const PLAN_RULES = {
 } as const;
 
 /**
+ * Members only ever access /upgrade
+ * Owners control app configuration via /owner
+ * App plan permissions apply exclusively to owners
  * Owner access, features, and limits are enforced exclusively by Whop ownership + active subscription.
- * This function resolves permissions based on the user's active Whop plan.
+ * This function resolves permissions based on the owner's active Whop plan.
  */
 export function getPlanPermissions(plan: "free" | "premium" | "pro"): PlanPermissions {
   const rules = PLAN_RULES[plan];
