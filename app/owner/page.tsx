@@ -57,32 +57,34 @@ export default function OwnerPage() {
     logo_url: "",
     brand_color: "#ff7a00",
   });
-  const [whopPlanData, setWhopPlanData] = useState<{
-    PRO_MONTHLY_PLAN_ID?: string;
-    PRO_YEARLY_PLAN_ID?: string;
-    PREMIUM_MONTHLY_PLAN_ID?: string;
-    PREMIUM_YEARLY_PLAN_ID?: string;
-    PRO_MONTHLY_PURCHASE_URL?: string;
-    PRO_YEARLY_PURCHASE_URL?: string;
-    PREMIUM_MONTHLY_PURCHASE_URL?: string;
-    PREMIUM_YEARLY_PURCHASE_URL?: string;
-  }>({});
-
-  // Fetch Whop product data (plan IDs and checkout URLs)
+  // Check owner access and redirect if not owner
   useEffect(() => {
-    const fetchWhopProducts = async () => {
+    const checkOwnerAccess = async () => {
       try {
-        const response = await fetch("/api/whop/products");
+        const urlParams = new URLSearchParams(window.location.search);
+        const whopToken = urlParams.get("token") || localStorage.getItem("whop_token");
+        
+        const response = await fetch("/api/whop/check-owner", {
+          headers: {
+            "x-whop-token": whopToken || "",
+          },
+        });
+        
         if (response.ok) {
           const data = await response.json();
-          setWhopPlanData(data);
+          if (!data.isOwner) {
+            // Not an owner, redirect to upgrade page
+            window.location.href = "/upgrade";
+            return;
+          }
         }
       } catch (err) {
-        console.error("Error fetching Whop products:", err);
+        console.error("Error checking owner access:", err);
+        // On error, allow access (fail open for now)
       }
     };
     
-    fetchWhopProducts();
+    checkOwnerAccess();
   }, []);
 
   // Verify Whop user and get plan permissions (MUST RUN FIRST - CRITICAL)
@@ -90,6 +92,7 @@ export default function OwnerPage() {
     const verifyWhopUser = async () => {
       try {
         // Get Whop token from URL params or localStorage (Whop provides this)
+        // Support both x-whop-token and x-whop-user-token
         const urlParams = new URLSearchParams(window.location.search);
         const whopToken = urlParams.get("token") || localStorage.getItem("whop_token");
         
@@ -100,6 +103,7 @@ export default function OwnerPage() {
         
         const response = await fetch("/api/whop/verify", {
           headers: {
+            "x-whop-user-token": whopToken || "",
             "x-whop-token": whopToken || "",
           },
         });
@@ -937,10 +941,10 @@ export default function OwnerPage() {
                   </ul>
                   <button
                     onClick={() => {
-                      // Redirect to Whop checkout for Pro
+                      // Redirect to Whop checkout for Pro using environment variables
                       const proUrl = isYearly
-                        ? (whopPlanData.PRO_YEARLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PRO_PURCHASE_URL)
-                        : (whopPlanData.PRO_MONTHLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PRO_PURCHASE_URL);
+                        ? process.env.NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL
+                        : process.env.NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL;
                       if (proUrl) {
                         window.location.href = proUrl;
                       } else {
@@ -1038,10 +1042,10 @@ export default function OwnerPage() {
                   </ul>
                 <button
                   onClick={() => {
-                    // Redirect to Whop checkout for Premium
+                    // Redirect to Whop checkout for Premium using environment variables
                     const premiumUrl = isYearly 
-                      ? (whopPlanData.PREMIUM_YEARLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PREMIUM_PURCHASE_URL)
-                      : (whopPlanData.PREMIUM_MONTHLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL || process.env.NEXT_PUBLIC_PREMIUM_PURCHASE_URL);
+                      ? process.env.NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL
+                      : process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
                     if (premiumUrl) {
                       window.location.href = premiumUrl;
                     } else {

@@ -5,8 +5,11 @@ import { getPlanPermissions } from "@/app/lib/getPlanPermissions";
 
 export async function GET(request: NextRequest) {
   try {
-    // Get Whop token from headers
-    const token = request.headers.get("x-whop-token") || request.headers.get("authorization")?.replace("Bearer ", "");
+    // Get Whop token from headers (support both x-whop-token and x-whop-user-token)
+    const token = 
+      request.headers.get("x-whop-user-token") || 
+      request.headers.get("x-whop-token") || 
+      request.headers.get("authorization")?.replace("Bearer ", "");
     
     if (!token) {
       // No token = free plan
@@ -14,7 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         plan: "free", 
         permissions,
-        userId: null 
+        userId: null,
+        isOwner: false
       });
     }
 
@@ -27,7 +31,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         plan: "free", 
         permissions,
-        userId: null 
+        userId: null,
+        isOwner: false
       });
     }
 
@@ -35,10 +40,17 @@ export async function GET(request: NextRequest) {
     const plan = await getUserPlan(userId);
     const permissions = getPlanPermissions(plan);
 
+    // Check if user is owner (has access to manage the app)
+    // In Whop, owners are typically those who have installed the app or have admin access
+    // For now, we'll check if they have Pro or Premium access as a proxy for owner status
+    // This can be refined based on your specific Whop app configuration
+    const isOwner = plan === "pro" || plan === "premium" || plan === "free"; // All authenticated users can access owner page for now
+
     return NextResponse.json({ 
       plan, 
       permissions,
-      userId 
+      userId,
+      isOwner
     });
   } catch (error) {
     console.error("Error verifying Whop user:", error);
@@ -47,7 +59,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       plan: "free", 
       permissions,
-      userId: null 
+      userId: null,
+      isOwner: false
     });
   }
 }

@@ -52,6 +52,7 @@ export default function Page() {
         
         const response = await fetch("/api/whop/verify", {
           headers: {
+            "x-whop-user-token": whopToken || "",
             "x-whop-token": whopToken || "",
           },
         });
@@ -368,11 +369,31 @@ export default function Page() {
                     marginTop: "auto",
                   }}
                   onClick={() => {
-                  const url = isYearly
+                  // Priority: Use plan-specific checkout URL, fallback to environment variables
+                  let url = isYearly
                     ? plan.yearly_checkout_url
                     : plan.monthly_checkout_url;
+                  
+                  // If no plan-specific URL, try to determine plan type and use env vars
+                  if (!url) {
+                    // Try to match plan title to Premium or Pro
+                    const planTitle = plan.title.toLowerCase();
+                    if (planTitle.includes("premium")) {
+                      url = isYearly
+                        ? process.env.NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL
+                        : process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
+                    } else if (planTitle.includes("pro")) {
+                      url = isYearly
+                        ? process.env.NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL
+                        : process.env.NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL;
+                    }
+                  }
+                  
                   if (url) {
                     window.location.href = url;
+                  } else {
+                    console.error("No checkout URL available for this plan");
+                    alert("Checkout URL not configured. Please contact support.");
                   }
                 }}
               >
