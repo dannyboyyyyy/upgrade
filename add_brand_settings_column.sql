@@ -7,3 +7,4 @@ ADD COLUMN IF NOT EXISTS brand_settings JSONB;
 -- After running this, brand color changes will save and appear on the upgrade page
 
 
+
