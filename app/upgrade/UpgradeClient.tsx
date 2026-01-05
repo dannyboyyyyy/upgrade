@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { getEnv } from "../lib/env";
+import { OwnerConfigModal } from "./OwnerConfigModal";
 
 // Environment variables for checkout URLs (loaded at module level)
 const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
@@ -33,15 +34,17 @@ interface UpgradeClientProps {
   initialPermissions: {
     showUpgradeBranding: boolean;
   };
+  isOwner?: boolean;
+  role?: "owner" | "admin" | "member";
 }
 
 /**
- * Upgrade Client Component - For Members Only
+ * Upgrade Client Component - For Members and Owners
  * 
- * This component is only rendered for members (non-owners).
- * Owners are automatically redirected to /owner server-side.
+ * Members see normal upgrade UI.
+ * Owners/admins can toggle admin mode to configure plans and branding.
  */
-export function UpgradeClient({ initialPlan, initialPermissions }: UpgradeClientProps) {
+export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false, role = "member" }: UpgradeClientProps) {
   const [plans, setPlans] = useState<UpgradeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,8 @@ export function UpgradeClient({ initialPlan, initialPermissions }: UpgradeClient
     showUpgradeBranding: boolean;
   }>(initialPermissions);
   const [isYearly, setIsYearly] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Load plan and permissions (no ownership checks - that's handled server-side)
@@ -219,8 +224,125 @@ export function UpgradeClient({ initialPlan, initialPermissions }: UpgradeClient
         }
       `}</style>
       <div style={styles.container}>
+        {/* Admin Mode Toggle - Only visible to owners/admins */}
+        {isOwner && (
+          <button
+            onClick={() => setAdminMode(!adminMode)}
+            style={{
+              position: "fixed",
+              top: 20,
+              right: 20,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              background: adminMode ? brandSettings.brand_color : "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(10px) saturate(180%)",
+              WebkitBackdropFilter: "blur(10px) saturate(180%)",
+              border: `1px solid ${adminMode ? brandSettings.brand_color : "rgba(255, 255, 255, 0.2)"}`,
+              color: "#fff",
+              fontSize: 18,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1001,
+              transition: "all 0.2s",
+              boxShadow: adminMode ? `0 0 20px ${brandSettings.brand_color}40` : "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = adminMode ? brandSettings.brand_color : "rgba(0, 0, 0, 0.8)";
+              e.currentTarget.style.transform = "scale(1.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = adminMode ? brandSettings.brand_color : "rgba(0, 0, 0, 0.6)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            title={adminMode ? "Exit Admin Mode" : "Admin Mode"}
+          >
+            ⚙️
+          </button>
+        )}
 
-        <div style={{ textAlign: "center", marginBottom: 8 }}>
+        {/* Admin Mode Banner - Shows when admin mode is active */}
+        {isOwner && adminMode && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              background: `linear-gradient(135deg, ${brandSettings.brand_color}20 0%, ${brandSettings.brand_color}10 100%)`,
+              backdropFilter: "blur(10px) saturate(180%)",
+              WebkitBackdropFilter: "blur(10px) saturate(180%)",
+              borderBottom: `1px solid ${brandSettings.brand_color}40`,
+              padding: "12px 20px",
+              zIndex: 1000,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+            }}
+          >
+            <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>
+              Admin Mode Active
+            </span>
+            <button
+              onClick={() => setShowConfigModal(true)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                background: brandSettings.brand_color,
+                color: "#fff",
+                border: "none",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "opacity 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1";
+              }}
+            >
+              Configure Plans & Branding
+            </button>
+            <a
+              href="/owner"
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                background: "transparent",
+                color: "#fff",
+                textDecoration: "none",
+                fontSize: 12,
+                fontWeight: 500,
+                border: `1px solid ${brandSettings.brand_color}`,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = brandSettings.brand_color;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              Full Dashboard
+            </a>
+          </div>
+        )}
+
+        {/* Owner Config Modal - For inline admin configuration */}
+        {isOwner && (
+          <OwnerConfigModal
+            isOpen={showConfigModal}
+            onClose={() => setShowConfigModal(false)}
+            brandColor={brandSettings.brand_color}
+          />
+        )}
+
+        <div style={{ textAlign: "center", marginBottom: 8, marginTop: isOwner && adminMode ? 60 : 0 }}>
           {brandSettings.logo_url && (
             <img
               src={brandSettings.logo_url}

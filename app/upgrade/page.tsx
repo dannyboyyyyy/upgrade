@@ -3,23 +3,30 @@ import { UpgradeClient } from "./UpgradeClient";
 import { whopsdk } from "../lib/whop-sdk";
 import { getUserPlan } from "../lib/getUserPlan";
 import { getPlanPermissions } from "../lib/getPlanPermissions";
+import { getWhopUser } from "../lib/getWhopUser";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Upgrade Page - For Members
+ * Upgrade Page - For Members and Owners
  * 
  * Whop automatically routes members to /upgrade.
- * This page renders the upgrade UI for members.
+ * Owners can also access /upgrade and toggle admin mode inline.
+ * No redirects based on role - both see the same page.
  */
 export default async function Page() {
-  // Get plan and permissions for member
+  // Get plan and permissions for user
   const { plan, permissions } = await getMemberPlanAndPermissions();
+  
+  // Detect if user is owner/admin
+  const { isOwner, role } = await getWhopUser();
 
   return (
     <UpgradeClient
       initialPlan={plan}
       initialPermissions={permissions}
+      isOwner={isOwner}
+      role={role}
     />
   );
 }
