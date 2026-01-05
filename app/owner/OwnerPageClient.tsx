@@ -1168,7 +1168,7 @@ export default function OwnerPageClient() {
                               console.error("Auto-save brand color upsert also failed:", upsertError);
                             }
                           }
-                        } catch (err) {
+    } catch (err) {
                           console.error("Auto-save brand color exception:", err);
                         }
                       }}

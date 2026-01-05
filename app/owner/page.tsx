@@ -1,30 +1,29 @@
 import { redirect } from "next/navigation";
-import OwnerPageClient from "./OwnerPageClient";
 import { getWhopUser } from "../lib/getWhopUser";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Owner Page - Entry Point for Owners
+ * Owner Page - Defensive Route (Legacy Only)
+ * 
+ * IMPORTANT: This route is LEGACY/DEFENSIVE ONLY.
+ * The primary way for owners to configure plans is via inline configuration UI
+ * on the /upgrade page (OwnerConfigModal).
  * 
  * ROUTING RULES:
- * - Server checks ownership via getWhopUser()
+ * - /owner is NOT required for normal usage
+ * - /owner may exist for backwards compatibility
+ * - If accessed, server checks ownership via getWhopUser()
  * - If isOwner === false → redirect to /upgrade
- * - If isOwner === true → render owner dashboard
- * 
- * OWNER DETECTION (SERVER-SIDE ONLY):
- * - Uses shared getWhopUser() utility
- * - isOwner === true ONLY if company role is "owner" or "admin"
- * - On error or uncertainty → isOwner = false (fail-secure)
+ * - If isOwner === true → redirect to /upgrade (owners use inline config)
  * 
  * SECURITY:
  * - Ownership is enforced server-side to avoid iframe routing inconsistencies in Whop.
- * - No client-side ownership trust
  * - Members are redirected immediately, never seeing owner UI
  * - All owner checks are server-enforced
  * 
- * Members can NEVER access /owner even via direct URL.
- * Owners should ALWAYS end up on /owner.
+ * NOTE: This route redirects ALL users (including owners) to /upgrade
+ * because owner configuration is now inline on /upgrade to avoid routing issues.
  */
 export default async function OwnerPage() {
   // Server-side ownership verification
@@ -32,13 +31,12 @@ export default async function OwnerPage() {
   const { isOwner } = await getWhopUser();
 
   if (isOwner !== true) {
-    // Not an owner - redirect to upgrade page
+            // Not an owner - redirect to upgrade page
     // This ensures members never see owner configuration UI
-    // Members should ALWAYS end up on /upgrade
     redirect("/upgrade");
   }
 
-  // Owner verified - render the owner configuration UI
-  // Owners should ALWAYS end up on /owner
-  return <OwnerPageClient />;
+  // Owner verified - but redirect to /upgrade anyway
+  // Owner configuration is now inline on /upgrade to avoid routing issues
+  redirect("/upgrade");
 }
