@@ -1,7 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { UpgradeClient } from "./UpgradeClient";
-import { getWhopUser } from "../lib/getWhopUser";
 import { whopsdk } from "../lib/whop-sdk";
 import { getUserPlan } from "../lib/getUserPlan";
 import { getPlanPermissions } from "../lib/getPlanPermissions";
@@ -9,26 +7,12 @@ import { getPlanPermissions } from "../lib/getPlanPermissions";
 export const dynamic = "force-dynamic";
 
 /**
- * Upgrade Page - For Members Only
+ * Upgrade Page - For Members
  * 
- * ROUTING:
- * - This page is for members (non-owners)
- * - Owners are redirected to /owner
- * 
- * OWNER DETECTION (SERVER-SIDE ONLY):
- * - Uses getWhopUser() for ownership detection
- * - isOwner === true ONLY if company role is "owner" or "admin"
- * - On error or uncertainty → isOwner = false (fail-secure)
+ * Whop automatically routes members to /upgrade.
+ * This page renders the upgrade UI for members.
  */
 export default async function Page() {
-  // Server-side ownership check
-  const { isOwner } = await getWhopUser();
-
-  // Redirect owners to /owner
-  if (isOwner === true) {
-    redirect("/owner");
-  }
-
   // Get plan and permissions for member
   const { plan, permissions } = await getMemberPlanAndPermissions();
 

@@ -5,22 +5,18 @@ import { getWhopUser } from "../lib/getWhopUser";
 export const dynamic = "force-dynamic";
 
 /**
- * Owner Page - For Owners Only
+ * Owner Page - For Owners
  * 
- * ROUTING:
- * - This page is for owners/admins only
- * - Non-owners are redirected to /upgrade
+ * Whop automatically routes owners to /owner.
+ * This page renders the owner configuration UI.
  * 
- * OWNER DETECTION (SERVER-SIDE ONLY):
- * - Uses getWhopUser() for ownership detection
- * - isOwner === true ONLY if company role is "owner" or "admin"
- * - On error or uncertainty → isOwner = false (fail-secure)
+ * Security: Still verify ownership server-side in case someone tries to access directly.
  */
 export default async function OwnerPage() {
-  // Server-side ownership verification
+  // Server-side ownership verification (defensive - Whop should already route correctly)
   const { isOwner } = await getWhopUser();
 
-  // Redirect non-owners to /upgrade
+  // Redirect non-owners to /upgrade (defensive measure)
   if (isOwner !== true) {
     redirect("/upgrade");
   }
