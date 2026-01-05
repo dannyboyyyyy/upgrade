@@ -54,6 +54,9 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
   const [showOwnerConfig, setShowOwnerConfig] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Debug: Log initial owner status
+  console.log("[UpgradeClient] Initial isOwner:", initialIsOwner);
+
   // Refresh ownership status periodically (in case it changes)
   useEffect(() => {
     const verifyWhopUser = async () => {
@@ -78,10 +81,19 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         if (ownerResponse.ok) {
           const ownerData = await ownerResponse.json();
           // Update ownership status ONLY if isOwner === true (strict check)
-          setIsOwner(ownerData.isOwner === true);
+          const newIsOwner = ownerData.isOwner === true;
+          console.log("[Client] Owner check result:", { isOwner: newIsOwner, role: ownerData.role, initialIsOwner });
+          // Only update if we got a definitive answer, don't override server-side true with false
+          if (newIsOwner === true || initialIsOwner === false) {
+            setIsOwner(newIsOwner);
+          }
         } else {
-          // Request failed - ownership cannot be confirmed → isOwner = false
-          setIsOwner(false);
+          // Request failed - don't override server-side ownership check
+          // Only set to false if we started with false
+          console.log("[Client] Owner API request failed:", ownerResponse.status, "keeping initialIsOwner:", initialIsOwner);
+          if (initialIsOwner === false) {
+            setIsOwner(false);
+          }
         }
         
         // Get plan and permissions
@@ -247,7 +259,10 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
             zIndex: 1000
           }}>
             <button
-              onClick={() => setShowOwnerConfig(true)}
+              onClick={() => {
+                console.log("[Button] Configure Plans clicked, opening modal");
+                setShowOwnerConfig(true);
+              }}
               style={{
                 display: "inline-block",
                 padding: "12px 24px",

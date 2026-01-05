@@ -48,34 +48,65 @@ async function getOwnerStatus(): Promise<{ isOwner: boolean; plan: "free" | "pre
     }
 
     // Check ownership via internal API route
-    // Note: In production, consider calling Whop SDK directly here for better performance
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    
+    // Try relative URL first (works better in production)
     try {
-      // Check ownership
-      const ownerResponse = await fetch(`${baseUrl}/api/whop/me`, {
-        headers: {
-          "x-whop-user-token": token,
-          "x-whop-token": token,
-        },
-        cache: "no-store",
-      });
+      let ownerResponse;
+      try {
+        // Try relative URL first (works in both dev and production)
+        ownerResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/whop/me`, {
+          headers: {
+            "x-whop-user-token": token,
+            "x-whop-token": token,
+          },
+          cache: "no-store",
+        });
+      } catch (fetchError) {
+        // If absolute URL fails, try relative URL
+        const headersList = await headers();
+        const host = headersList.get("host") || "localhost:3000";
+        const protocol = headersList.get("x-forwarded-proto") || "http";
+        ownerResponse = await fetch(`${protocol}://${host}/api/whop/me`, {
+          headers: {
+            "x-whop-user-token": token,
+            "x-whop-token": token,
+          },
+          cache: "no-store",
+        });
+      }
 
       let isOwner = false;
       if (ownerResponse.ok) {
         const ownerData = await ownerResponse.json();
         // Strict check: isOwner === true only if explicitly true
         isOwner = ownerData.isOwner === true;
+        console.log("[Server] Owner check result:", { isOwner, role: ownerData.role });
+      } else {
+        console.log("[Server] Owner API request failed:", ownerResponse.status);
       }
 
       // Get plan and permissions
-      const verifyResponse = await fetch(`${baseUrl}/api/whop/verify`, {
-        headers: {
-          "x-whop-user-token": token,
-          "x-whop-token": token,
-        },
-        cache: "no-store",
-      });
+      let verifyResponse;
+      try {
+        verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/whop/verify`, {
+          headers: {
+            "x-whop-user-token": token,
+            "x-whop-token": token,
+          },
+          cache: "no-store",
+        });
+      } catch (fetchError) {
+        // If absolute URL fails, try relative URL
+        const headersList = await headers();
+        const host = headersList.get("host") || "localhost:3000";
+        const protocol = headersList.get("x-forwarded-proto") || "http";
+        verifyResponse = await fetch(`${protocol}://${host}/api/whop/verify`, {
+          headers: {
+            "x-whop-user-token": token,
+            "x-whop-token": token,
+          },
+          cache: "no-store",
+        });
+      }
 
       if (verifyResponse.ok) {
         const data = await verifyResponse.json();
@@ -117,6 +148,9 @@ export default async function Page() {
   // This ensures ownership is verified before any UI is rendered
   // Members will never see owner configuration UI
   const { isOwner, plan, permissions } = await getOwnerStatus();
+
+  // Debug: Log owner status
+  console.log("[Page] Server-side owner check:", { isOwner, plan });
 
   return (
     <UpgradeClient
