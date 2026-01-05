@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { getEnv } from "../lib/env";
+import { OwnerConfigModal } from "./OwnerConfigModal";
 
 // Environment variables for checkout URLs (loaded at module level)
 const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
@@ -50,7 +51,7 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
   }>(initialPermissions);
   const [isOwner, setIsOwner] = useState(initialIsOwner);
   const [isYearly, setIsYearly] = useState(false);
-  const [ownerLink, setOwnerLink] = useState("/owner");
+  const [showOwnerConfig, setShowOwnerConfig] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Refresh ownership status periodically (in case it changes)
@@ -63,11 +64,6 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         // Store token for future use
         if (whopToken && !localStorage.getItem("whop_token")) {
           localStorage.setItem("whop_token", whopToken);
-        }
-        
-        // Update owner link with token
-        if (whopToken) {
-          setOwnerLink(`/owner?token=${encodeURIComponent(whopToken)}`);
         }
         
         // Fetch ownership status from /api/whop/me
@@ -240,7 +236,8 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         }
       `}</style>
       <div style={styles.container}>
-        {/* Owner Dashboard Link: Only visible to owners, navigates to /owner with token */}
+        {/* Owner Configuration Button: Only visible to owners, opens inline configuration modal */}
+        {/* Plan configuration is rendered inline on /upgrade to avoid routing issues caused by Whop iframe mounting */}
         {/* Members must NEVER see this button or any configuration UI */}
         {isOwner === true && (
           <div style={{ 
@@ -249,8 +246,8 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
             right: 20,
             zIndex: 1000
           }}>
-            <a
-              href={ownerLink}
+            <button
+              onClick={() => setShowOwnerConfig(true)}
               style={{
                 display: "inline-block",
                 padding: "12px 24px",
@@ -262,6 +259,7 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
                 fontSize: 14,
                 transition: "opacity 0.2s",
                 border: `1px solid ${brandSettings.brand_color}40`,
+                cursor: "pointer",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.opacity = "0.9";
@@ -270,8 +268,8 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
                 e.currentTarget.style.opacity = "1";
               }}
             >
-              Owner Dashboard
-            </a>
+              Configure Plans
+            </button>
           </div>
         )}
 
@@ -588,6 +586,15 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         )}
       </div>
 
+      {/* Owner Configuration Modal - Only rendered if isOwner === true */}
+      {/* Plan configuration is rendered inline on /upgrade to avoid routing issues caused by Whop iframe mounting */}
+      {isOwner === true && (
+        <OwnerConfigModal
+          isOpen={showOwnerConfig}
+          onClose={() => setShowOwnerConfig(false)}
+          brandColor={brandSettings.brand_color}
+        />
+      )}
     </div>
   );
 }

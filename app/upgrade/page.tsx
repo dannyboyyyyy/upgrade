@@ -4,17 +4,17 @@ import { UpgradeClient } from "./UpgradeClient";
 export const dynamic = "force-dynamic";
 
 /**
- * Upgrade Page - Entry Point for ALL Users
+ * Upgrade Page - Single Entry Point for ALL Users
  * 
  * ARCHITECTURE:
  * - ALL users (owners + members) load the app at /upgrade
- * - Members: See upgrade page only, cannot access /owner
- * - Owners: See upgrade page + "Owner Dashboard" button linking to /owner
+ * - This is the ONLY page - no routing to /owner
+ * - No redirects, no token passing via URL
  * 
- * OWNER ACCESS:
- * - Owners see "Owner Dashboard" button that navigates to /owner
- * - /owner route is server-side protected (redirects non-owners)
- * - Members never see owner configuration UI
+ * OWNER CONFIGURATION (INLINE):
+ * - Owners see "Configure Plans" button that opens OwnerConfigModal inline
+ * - Plan configuration is rendered inline on /upgrade to avoid routing issues caused by Whop iframe mounting
+ * - Members never see owner configuration UI (not even hidden in DOM)
  * 
  * OWNER DETECTION (SERVER-SIDE ONLY):
  * - Use /api/whop/me to determine isOwner = true ONLY if company role is "owner" or "admin"
@@ -26,6 +26,7 @@ export const dynamic = "force-dynamic";
  * - No secrets in client
  * - No client-side trust for ownership
  * - All owner checks are server-enforced
+ * - Ownership enforced server-side before rendering owner UI
  */
 async function getOwnerStatus(): Promise<{ isOwner: boolean; plan: "free" | "premium" | "pro"; permissions: { showUpgradeBranding: boolean } }> {
   try {
