@@ -50,8 +50,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's company role from Whop API
-    // In Whop, when app is accessed via dashboard, authenticated users are owners
-    // Try to retrieve explicit role, but if unavailable, treat authenticated users as owners
+    // Determine ownership using Whop company role (single source of truth)
+    // isOwner === true only if role is "owner" or "admin"
+    // On error or unknown role → isOwner = false (fail-secure)
     try {
       // Use Whop SDK to retrieve user information
       const user = await whopsdk.users.retrieve(userId);
@@ -61,15 +62,8 @@ export async function GET(request: NextRequest) {
       const userObj = user as any;
       const userRole = userObj?.company_role || userObj?.role || userObj?.user_role || userObj?.companyRole || userObj?.userRole || null;
       
-      // Ownership logic: isOwner = role === "owner" || role === "admin"
-      // If explicit role found, use it
-      let isOwner = userRole === "owner" || userRole === "admin";
-      
-      // If no explicit role but user is authenticated (has userId), treat as owner
-      // This is correct for Whop dashboard context - authenticated users accessing via dashboard are owners
-      if (!isOwner && userId) {
-        isOwner = true; // In dashboard context, authenticated = owner
-      }
+      // Ownership logic: isOwner === true only if role is "owner" or "admin"
+      const isOwner = userRole === "owner" || userRole === "admin";
       
       const role: "owner" | "admin" | "member" = isOwner 
         ? (userRole === "admin" ? "admin" : "owner") 
@@ -82,17 +76,8 @@ export async function GET(request: NextRequest) {
       });
     } catch (userError) {
       console.error("Error fetching user role:", userError);
-      // If user retrieval fails but userId exists, still treat as owner
-      // This handles cases where SDK doesn't return role info
-      // In Whop dashboard context, authenticated users are owners
-      if (userId) {
-        return NextResponse.json({ 
-          isOwner: true,
-          role: "owner",
-          userId
-        });
-      }
-      // No userId = not authenticated = member
+      // On error or unknown role → isOwner = false (fail-secure)
+      // Do NOT infer ownership from token, subscription, userId, or query params
       return NextResponse.json({ 
         isOwner: false,
         role: "member",

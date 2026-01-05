@@ -46,13 +46,11 @@ export default function Page() {
   const [isYearly, setIsYearly] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Members only ever access /upgrade
-  // Owners configure the app via /owner
-  // Ownership is enforced server-side via Whop
-  // 
-  // /upgrade: offentlig visning for members + owners
-  // Dashboard-knapp kun for owners (isOwner === true)
-  // Members skal ikke se knappen og ikke kunne utlede at /owner finnes
+  // Owners access the dashboard via /upgrade. Members never see it.
+  // ALL users (members + owners) load /upgrade by default
+  // ONLY owners can see a "Dashboard" button on /upgrade
+  // Members must NEVER see the Dashboard button
+  // Visibility is controlled by isOwner (not subscription)
   useEffect(() => {
     const verifyWhopUser = async () => {
       try {
@@ -244,11 +242,11 @@ export default function Page() {
         }
       `}</style>
       <div style={styles.container}>
-        {/* Dashboard-knapp (KUN for owners)
-            - Vises kun hvis isOwner === true (strenge sjekk)
-            - Plassering: øverst til høyre (header)
-            - Lenker til /owner
-            - Members skal ikke se knappen og ikke kunne utlede at /owner finnes via UI
+        {/* Dashboard button: Owners access the dashboard via /upgrade. Members never see it.
+            - Conditionally rendered ONLY when isOwner === true
+            - Button placement: top-right (header area)
+            - Button navigates to /owner
+            - Members must not see the button, markup, or hints
         */}
         {isOwner === true && (
           <div style={{ 

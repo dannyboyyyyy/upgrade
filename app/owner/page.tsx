@@ -57,24 +57,11 @@ export default function OwnerPage() {
     logo_url: "",
     brand_color: "#ff7a00",
   });
-  // Members only ever access /upgrade
-  // Owners configure the app via /owner
-  // Ownership is enforced server-side via Whop
-  //
-  // /owner: kun for owners/admins
-  // - app-konfigurasjon
-  // - plan-styring
-  // - branding
-  // - limits
-  //
-  // Members:
-  // - kan aldri konfigurere app
-  // - kan aldri påvirke plans
-  // - kan aldri se dashboard
-  //
-  // Absolutt beskyttelse: valider ownership server-side via /api/whop/me
-  // Hvis isOwner !== true: redirect umiddelbart til /upgrade
-  // Fail-secure: ved enhver feil → redirect
+  // Owners access the dashboard via /upgrade. Members never see it.
+  // /owner route protection: Server-side verification via /api/whop/me
+  // If isOwner !== true → redirect to /upgrade
+  // Never rely on client-only checks
+  // Never allow members to access configuration, even via direct URL
   useEffect(() => {
     const checkOwnerAccess = async () => {
       try {
