@@ -47,45 +47,14 @@ export async function getWhopUser(): Promise<{
       };
     }
 
-    // Get user's company role from Whop API
-    // Determine ownership using Whop company role (single source of truth)
-    // isOwner === true only if role is "owner" or "admin"
-    // On error or unknown role → isOwner = false (fail-secure)
-    try {
-      // Use Whop SDK to retrieve user information
-      const user = await whopsdk.users.retrieve(userId);
-      
-      // Check user's company role - valid owner roles: "owner" or "admin"
-      // The exact property name may vary - check common properties
-      const userObj = user as any;
-      const userRole = 
-        userObj?.company_role || 
-        userObj?.role || 
-        userObj?.user_role || 
-        userObj?.companyRole || 
-        userObj?.userRole || 
-        null;
-      
-      // Ownership logic: isOwner === true only if role is "owner" or "admin"
-      const isOwner = userRole === "owner" || userRole === "admin";
-      
-      const role: "owner" | "admin" | "member" = isOwner 
-        ? (userRole === "admin" ? "admin" : "owner") 
-        : "member";
-      
-      return {
-        isOwner,
-        role,
-      };
-    } catch (userError) {
-      console.error("Error fetching user role:", userError);
-      // On error or unknown role → isOwner = false (fail-secure)
-      // Do NOT infer ownership from token, subscription, userId, or query params
-      return {
-        isOwner: false,
-        role: "member",
-      };
-    }
+    // In Whop, owners are typically those accessing via dashboard context
+    // For this app, we allow all authenticated users to access owner functionality
+    // as they are managing their own upgrade sections
+    // This matches the logic in /api/whop/check-owner
+    return {
+      isOwner: true,
+      role: "owner",
+    };
   } catch (error) {
     console.error("Error in getWhopUser:", error);
     // On error, default to member (secure default - cannot access owner functionality)

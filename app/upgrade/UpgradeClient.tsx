@@ -224,14 +224,58 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         }
       `}</style>
       <div style={styles.container}>
-        {/* Admin Mode Toggle - Only visible to owners/admins */}
+        {/* Owner Dashboard Link - Only visible to owners/admins */}
+        {isOwner && (
+          <a
+            href="/owner"
+            style={{
+              position: "fixed",
+              top: 20,
+              right: 20,
+              padding: "10px 16px",
+              borderRadius: 8,
+              background: "rgba(0, 0, 0, 0.7)",
+              backdropFilter: "blur(10px) saturate(180%)",
+              WebkitBackdropFilter: "blur(10px) saturate(180%)",
+              border: `1px solid ${brandSettings.brand_color}60`,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textDecoration: "none",
+              zIndex: 1001,
+              transition: "all 0.2s",
+              boxShadow: `0 2px 8px ${brandSettings.brand_color}20`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = brandSettings.brand_color;
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = `0 4px 12px ${brandSettings.brand_color}40`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = `0 2px 8px ${brandSettings.brand_color}20`;
+            }}
+            title="Owner Dashboard"
+          >
+            <span>⚙️</span>
+            <span>Dashboard</span>
+          </a>
+        )}
+
+        {/* Admin Mode Toggle - Only visible to owners/admins when not using direct dashboard link */}
         {isOwner && (
           <button
             onClick={() => setAdminMode(!adminMode)}
             style={{
               position: "fixed",
               top: 20,
-              right: 20,
+              right: adminMode ? 20 : 140,
               width: 40,
               height: 40,
               borderRadius: "50%",
@@ -257,7 +301,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
               e.currentTarget.style.background = adminMode ? brandSettings.brand_color : "rgba(0, 0, 0, 0.6)";
               e.currentTarget.style.transform = "scale(1)";
             }}
-            title={adminMode ? "Exit Admin Mode" : "Admin Mode"}
+            title={adminMode ? "Exit Admin Mode" : "Toggle Admin Mode"}
           >
             ⚙️
           </button>
