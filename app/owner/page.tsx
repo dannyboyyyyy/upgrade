@@ -1,26 +1,18 @@
-import { redirect } from "next/navigation";
 import OwnerPageClient from "./OwnerPageClient";
-import { getWhopUser } from "../lib/getWhopUser";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Owner Page - For Owners
  * 
- * Whop automatically routes owners to /owner.
+ * Whop automatically routes owners to /owner via dashboard_path.
  * This page renders the owner configuration UI.
  * 
- * Security: Still verify ownership server-side in case someone tries to access directly.
+ * No redirects - Whop handles routing. If accessed without Whop context,
+ * OwnerPageClient will handle the UI appropriately.
  */
 export default async function OwnerPage() {
-  // Server-side ownership verification (defensive - Whop should already route correctly)
-  const { isOwner } = await getWhopUser();
-
-  // Redirect non-owners to /upgrade (defensive measure)
-  if (isOwner !== true) {
-    redirect("/upgrade");
-  }
-
-  // Owner verified - render owner dashboard
+  // Render owner dashboard directly - no redirects
+  // Whop controls routing, not the app
   return <OwnerPageClient />;
 }
