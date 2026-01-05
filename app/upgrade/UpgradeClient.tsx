@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { getEnv } from "../lib/env";
-import { OwnerConfigModal } from "./OwnerConfigModal";
 
 // Environment variables for checkout URLs (loaded at module level)
 const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
@@ -30,14 +29,22 @@ type BrandSettings = {
 const OWNER_ID = "whop-app";
 
 interface UpgradeClientProps {
-  initialIsOwner: boolean;
   initialPlan: "free" | "premium" | "pro";
   initialPermissions: {
     showUpgradeBranding: boolean;
   };
 }
 
-export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions }: UpgradeClientProps) {
+/**
+ * Upgrade Client Component - Members Only
+ * 
+ * This component is only rendered for members (non-owners).
+ * Owners are automatically redirected to /owner server-side.
+ * 
+ * No owner-specific UI is rendered here.
+ * No client-side ownership checks.
+ */
+export function UpgradeClient({ initialPlan, initialPermissions }: UpgradeClientProps) {
   const [plans, setPlans] = useState<UpgradeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,17 +56,12 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
   const [permissions, setPermissions] = useState<{
     showUpgradeBranding: boolean;
   }>(initialPermissions);
-  const [isOwner, setIsOwner] = useState(initialIsOwner);
   const [isYearly, setIsYearly] = useState(false);
-  const [showOwnerConfig, setShowOwnerConfig] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Debug: Log initial owner status
-  console.log("[UpgradeClient] Initial isOwner:", initialIsOwner);
-
-  // Refresh ownership status periodically (in case it changes)
+  // Load plan and permissions (no ownership checks - that's handled server-side)
   useEffect(() => {
-    const verifyWhopUser = async () => {
+    const loadPlanPermissions = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const whopToken = urlParams.get("token") || localStorage.getItem("whop_token");
@@ -69,34 +71,7 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
           localStorage.setItem("whop_token", whopToken);
         }
         
-        // Fetch ownership status from /api/whop/me
-        // Determine ownership STRICTLY from company role (server-side only)
-        const ownerResponse = await fetch("/api/whop/me", {
-          headers: {
-            "x-whop-user-token": whopToken || "",
-            "x-whop-token": whopToken || "",
-          },
-        });
-        
-        if (ownerResponse.ok) {
-          const ownerData = await ownerResponse.json();
-          // Update ownership status ONLY if isOwner === true (strict check)
-          const newIsOwner = ownerData.isOwner === true;
-          console.log("[Client] Owner check result:", { isOwner: newIsOwner, role: ownerData.role, initialIsOwner });
-          // Only update if we got a definitive answer, don't override server-side true with false
-          if (newIsOwner === true || initialIsOwner === false) {
-            setIsOwner(newIsOwner);
-          }
-        } else {
-          // Request failed - don't override server-side ownership check
-          // Only set to false if we started with false
-          console.log("[Client] Owner API request failed:", ownerResponse.status, "keeping initialIsOwner:", initialIsOwner);
-          if (initialIsOwner === false) {
-            setIsOwner(false);
-          }
-        }
-        
-        // Get plan and permissions
+        // Get plan and permissions (ownership is handled server-side via routing)
         const response = await fetch("/api/whop/verify", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -110,12 +85,11 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
           setPermissions({ showUpgradeBranding: data.permissions.showUpgradeBranding });
         }
       } catch (err) {
-        console.error("Error verifying Whop user:", err);
-        setIsOwner(false);
+        console.error("Error loading plan permissions:", err);
       }
     };
     
-    verifyWhopUser();
+    loadPlanPermissions();
   }, []);
 
   useEffect(() => {
@@ -248,45 +222,6 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         }
       `}</style>
       <div style={styles.container}>
-        {/* Owner Configuration Button: Only visible to owners, opens inline configuration modal */}
-        {/* Plan configuration is rendered inline on /upgrade to avoid routing issues caused by Whop iframe mounting */}
-        {/* Members must NEVER see this button or any configuration UI */}
-        {isOwner === true && (
-          <div style={{ 
-            position: "absolute", 
-            top: 20, 
-            right: 20,
-            zIndex: 1000
-          }}>
-            <button
-              onClick={() => {
-                console.log("[Button] Configure Plans clicked, opening modal");
-                setShowOwnerConfig(true);
-              }}
-              style={{
-                display: "inline-block",
-                padding: "12px 24px",
-                background: brandSettings.brand_color,
-                color: "#fff",
-                textDecoration: "none",
-                borderRadius: 10,
-                fontWeight: 600,
-                fontSize: 14,
-                transition: "opacity 0.2s",
-                border: `1px solid ${brandSettings.brand_color}40`,
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-            >
-              Configure Plans
-            </button>
-          </div>
-        )}
 
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           {brandSettings.logo_url && (
@@ -601,15 +536,6 @@ export function UpgradeClient({ initialIsOwner, initialPlan, initialPermissions 
         )}
       </div>
 
-      {/* Owner Configuration Modal - Only rendered if isOwner === true */}
-      {/* Plan configuration is rendered inline on /upgrade to avoid routing issues caused by Whop iframe mounting */}
-      {isOwner === true && (
-        <OwnerConfigModal
-          isOpen={showOwnerConfig}
-          onClose={() => setShowOwnerConfig(false)}
-          brandColor={brandSettings.brand_color}
-        />
-      )}
     </div>
   );
 }

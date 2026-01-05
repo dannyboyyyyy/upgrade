@@ -1,218 +1,191 @@
-# Deployment Guide - Whop Embedded App
+# Deployment Guide - Whop Upgrade App
 
-This guide explains how to deploy the Whop embedded app using Git and Vercel.
+This guide explains how to deploy the Whop embedded Next.js app to Vercel using Git.
 
 ## Prerequisites
 
-- Git repository set up (GitHub, GitLab, or Bitbucket)
-- Vercel account (free tier works)
-- Whop app configured with your app URL
-- Environment variables ready
+1. **Git repository** - Your code should be in a Git repository (GitHub, GitLab, or Bitbucket)
+2. **Vercel account** - Sign up at [vercel.com](https://vercel.com) if you don't have one
+3. **Environment variables** - All required environment variables configured
 
-## Step-by-Step Deployment
+## Step 1: Push Code to Git Repository
 
-### 1. Prepare Your Code
-
-Ensure all changes are committed:
+If you haven't already, initialize and push your code:
 
 ```bash
+# Navigate to project directory
 cd /Users/danielstomner/Desktop/Upgrade/upgrade
+
+# Initialize git (if not already done)
+git init
+
+# Add all files
 git add .
-git commit -m "Refactor: Single entry point architecture with inline owner configuration"
-```
 
-### 2. Push to Git Repository
+# Commit changes
+git commit -m "Initial commit: Whop upgrade app with server-side routing"
 
-If you haven't already, initialize and push to your remote repository:
+# Add remote repository (replace with your repo URL)
+git remote add origin https://github.com/yourusername/your-repo.git
 
-```bash
-# If repository doesn't exist yet
-git remote add origin <your-repo-url>
+# Push to remote
 git push -u origin main
-
-# If repository already exists
-git push origin main
 ```
 
-### 3. Deploy to Vercel
-
-#### Option A: Deploy via Vercel Dashboard (Recommended)
+## Step 2: Connect Repository to Vercel
 
 1. **Go to Vercel Dashboard**
-   - Visit [vercel.com](https://vercel.com)
+   - Visit [vercel.com/dashboard](https://vercel.com/dashboard)
    - Sign in or create an account
 
-2. **Import Your Project**
+2. **Import Project**
    - Click "Add New..." → "Project"
-   - Import your Git repository
-   - Select the repository containing your app
+   - Select your Git provider (GitHub, GitLab, or Bitbucket)
+   - Authorize Vercel to access your repositories
+   - Select your repository from the list
 
-3. **Configure Project Settings**
-   - **Framework Preset**: Next.js (auto-detected)
+3. **Configure Project**
+   - **Framework Preset**: Next.js (should auto-detect)
    - **Root Directory**: `upgrade` (if your Next.js app is in a subdirectory)
    - **Build Command**: `npm run build` (default)
    - **Output Directory**: `.next` (default)
+   - **Install Command**: `npm install` (default)
 
-4. **Set Environment Variables**
-   
-   Add the following environment variables in Vercel dashboard:
-   
-   **Whop Configuration (Server-only):**
-   ```
-   WHOP_API_KEY=your_whop_api_key
-   WHOP_APP_ID=your_whop_app_id
-   PREMIUM_PRODUCT_ID=your_premium_product_id
-   PRO_PRODUCT_ID=your_pro_product_id
-   ```
-   
-   **Whop Checkout URLs (Client-accessible):**
-   ```
-   NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL=https://whop.com/checkout/xxx
-   NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL=https://whop.com/checkout/xxx-yearly
-   NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL=https://whop.com/checkout/yyy
-   NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL=https://whop.com/checkout/yyy-yearly
-   ```
-   
-   **Supabase Configuration:**
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-   
-   **App URL (for server-side API calls):**
-   ```
-   NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-   ```
-   
-   ⚠️ **Important**: After setting `NEXT_PUBLIC_APP_URL`, you'll need to redeploy for it to take effect.
+## Step 3: Configure Environment Variables
 
-5. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete (usually 1-3 minutes)
+In the Vercel project settings, add all required environment variables:
 
-#### Option B: Deploy via Vercel CLI
+### Required Environment Variables
 
-1. **Install Vercel CLI**
+```env
+# Whop Configuration (Server-only)
+WHOP_API_KEY=your_whop_api_key
+WHOP_APP_ID=your_whop_app_id
+
+# Whop Product IDs
+PREMIUM_PRODUCT_ID=your_premium_product_id
+PRO_PRODUCT_ID=your_pro_product_id
+
+# Whop Checkout URLs (Client-accessible)
+NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL=https://whop.com/checkout/xxx
+NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL=https://whop.com/checkout/xxx-yearly
+NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL=https://whop.com/checkout/yyy
+NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL=https://whop.com/checkout/yyy-yearly
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# App URL (for server-side API calls)
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+```
+
+**To add environment variables in Vercel:**
+1. Go to your project settings
+2. Navigate to "Environment Variables"
+3. Add each variable with its value
+4. Select environments (Production, Preview, Development)
+5. Click "Save"
+
+## Step 4: Deploy
+
+1. **Automatic Deployment**
+   - After connecting the repository, Vercel will automatically deploy
+   - You'll see the deployment progress in the dashboard
+   - Once complete, you'll get a deployment URL (e.g., `https://your-app.vercel.app`)
+
+2. **Manual Deployment** (if needed)
    ```bash
+   # Install Vercel CLI
    npm i -g vercel
-   ```
 
-2. **Login to Vercel**
-   ```bash
+   # Login to Vercel
    vercel login
-   ```
 
-3. **Deploy**
-   ```bash
-   cd /Users/danielstomner/Desktop/Upgrade/upgrade
+   # Deploy
    vercel
-   ```
-   
-   Follow the prompts:
-   - Link to existing project or create new
-   - Set root directory: `upgrade` (if prompted)
-   - Confirm environment variables
 
-4. **Set Environment Variables via CLI** (if not set in dashboard)
-   ```bash
-   vercel env add WHOP_API_KEY
-   vercel env add WHOP_APP_ID
-   vercel env add PREMIUM_PRODUCT_ID
-   vercel env add PRO_PRODUCT_ID
-   vercel env add NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL
-   vercel env add NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL
-   vercel env add NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL
-   vercel env add NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL
-   vercel env add NEXT_PUBLIC_SUPABASE_URL
-   vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-   vercel env add NEXT_PUBLIC_APP_URL
+   # Deploy to production
+   vercel --prod
    ```
 
-### 4. Configure Whop App Settings
+## Step 5: Configure Whop App Settings
 
-After deployment, update your Whop app settings:
+1. **Update App URL in Whop Dashboard**
+   - Go to your Whop app settings
+   - Set the app URL to your Vercel deployment URL: `https://your-app.vercel.app`
+   - Ensure the app is configured to load at `/upgrade` or `/owner` as needed
 
-1. **Go to Whop Dashboard** → Your App → Settings
-2. **Set App URL**: `https://your-app.vercel.app`
-3. **Set Return URL**: `https://your-app.vercel.app/upgrade?token={token}`
-4. **Required Scopes**:
-   - `member:basic:read`
-   - `product:basic:read`
+2. **Verify Permissions**
+   - Ensure your Whop app has the required permissions:
+     - `company:basic:read` (required)
+     - `company:authorized_user:read` (required)
+     - `member:basic:read` (optional)
 
-### 5. Test Deployment
+## Step 6: Test Deployment
 
-1. **Visit your deployed app**: `https://your-app.vercel.app/upgrade`
-2. **Test as Member**: Should see upgrade page without configuration UI
-3. **Test as Owner**: Should see "Configure Plans" button that opens modal
-4. **Test /owner route**: Should redirect non-owners to /upgrade
+1. **Test Owner Access**
+   - Log in as a Whop owner/admin
+   - Access the app via Whop
+   - Verify you're redirected to `/owner`
+   - Verify you can configure plans
 
-### 6. Enable Automatic Deployments
+2. **Test Member Access**
+   - Log in as a Whop member
+   - Access the app via Whop
+   - Verify you're redirected to `/upgrade`
+   - Verify you can see upgrade plans but NOT configuration UI
+
+3. **Test Direct URL Access**
+   - As a member, try accessing `/owner` directly
+   - Verify you're redirected to `/upgrade`
+   - As an owner, try accessing `/upgrade` directly
+   - Verify you're redirected to `/owner`
+
+## Step 7: Continuous Deployment
 
 Vercel automatically deploys on every push to your main branch:
 
-1. **Go to Vercel Dashboard** → Your Project → Settings → Git
-2. **Production Branch**: Set to `main` (or your default branch)
-3. **Auto-deploy**: Enabled by default
+```bash
+# Make changes
+git add .
+git commit -m "Update app"
+git push origin main
 
-Now every `git push` will trigger a new deployment automatically.
+# Vercel will automatically deploy
+```
 
 ## Troubleshooting
 
-### Build Errors
+### Build Failures
 
-- **"Cannot find module"**: Ensure `package.json` has all dependencies
-- **"Environment variable not found"**: Check all env vars are set in Vercel
-- **"Headers() is not a function"**: Ensure Next.js version is 15+ (headers() is async)
+1. **Check build logs** in Vercel dashboard
+2. **Verify environment variables** are set correctly
+3. **Check Node.js version** (should be 18.x or higher)
+4. **Verify dependencies** are in `package.json`
 
-### Runtime Errors
+### Routing Issues
 
-- **"isOwner always false"**: Check `NEXT_PUBLIC_APP_URL` is set correctly
-- **"Token not found"**: Verify Whop is passing token in headers
-- **"API route 500 error"**: Check server-side environment variables
+1. **Verify `NEXT_PUBLIC_APP_URL`** is set to your Vercel deployment URL
+2. **Check server-side logs** in Vercel function logs
+3. **Verify Whop token** is being passed in headers
 
-### Common Issues
+### Owner Detection Issues
 
-1. **Server-side API calls failing**: 
-   - Ensure `NEXT_PUBLIC_APP_URL` matches your Vercel deployment URL
-   - Check that internal API routes are accessible
+1. **Check Whop API key** and app ID are correct
+2. **Verify user has "owner" or "admin" role** in Whop
+3. **Check server logs** for ownership check errors
 
-2. **Ownership check not working**:
-   - Verify `/api/whop/me` route is working
-   - Check Whop token is being passed correctly
-   - Ensure `WHOP_API_KEY` is set in Vercel
+## Security Notes
 
-3. **Modal not opening**:
-   - Check browser console for errors
-   - Verify `isOwner` is `true` in server component
-   - Check that `OwnerConfigModal` component is imported correctly
+- **Never commit** `.env.local` or environment variables to Git
+- **Use Vercel environment variables** for all secrets
+- **Server-side routing** ensures members can never access `/owner`
+- **Ownership checks** are enforced server-side, not client-side
 
-## Production Checklist
+## Additional Resources
 
-- [ ] All environment variables set in Vercel
-- [ ] `NEXT_PUBLIC_APP_URL` matches deployment URL
-- [ ] Whop app URL configured in Whop dashboard
-- [ ] Tested as member (no config UI visible)
-- [ ] Tested as owner (config UI accessible)
-- [ ] `/owner` route redirects non-owners
-- [ ] Plans save correctly to Supabase
-- [ ] Brand settings update correctly
-
-## Architecture Notes
-
-This app uses a **single entry point architecture**:
-
-- **ALL users** (owners + members) load `/upgrade`
-- **Owners** see "Configure Plans" button that opens inline modal
-- **Members** never see configuration UI
-- **`/owner` route** is optional/legacy, server-side protected
-
-This architecture ensures the app works regardless of how Whop loads it (iframe, direct link, Admin → Apps).
-
-## Support
-
-For issues:
-- Check Vercel deployment logs
-- Check browser console for client errors
-- Verify environment variables are set correctly
-- Test API routes directly: `/api/whop/me` and `/api/whop/verify`
-
+- [Vercel Documentation](https://vercel.com/docs)
+- [Next.js Deployment](https://nextjs.org/docs/deployment)
+- [Whop SDK Documentation](https://docs.whop.com)

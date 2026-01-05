@@ -1,126 +1,44 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import OwnerPageClient from "./OwnerPageClient";
+import { getWhopUser } from "../lib/getWhopUser";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Owner Page - Server-Side Protected Route
+ * Owner Page - Entry Point for Owners
  * 
- * ARCHITECTURE:
- * - /owner route MUST verify isOwner server-side
- * - If isOwner !== true → redirect to /upgrade
- * - Never rely on client-only checks
- * - Never allow members to access configuration, even via direct URL
+ * ROUTING RULES:
+ * - Server checks ownership via getWhopUser()
+ * - If isOwner === false → redirect to /upgrade
+ * - If isOwner === true → render owner dashboard
+ * 
+ * OWNER DETECTION (SERVER-SIDE ONLY):
+ * - Uses shared getWhopUser() utility
+ * - isOwner === true ONLY if company role is "owner" or "admin"
+ * - On error or uncertainty → isOwner = false (fail-secure)
  * 
  * SECURITY:
- * - Ownership check happens server-side before any UI is rendered
+ * - Ownership is enforced server-side to avoid iframe routing inconsistencies in Whop.
+ * - No client-side ownership trust
  * - Members are redirected immediately, never seeing owner UI
  * - All owner checks are server-enforced
  * 
- * ACCESS:
- * - Only owners can access this route
- * - Members attempting to access /owner are redirected to /upgrade
- * 
- * NOTE: Token can come from:
- * - Headers (when Whop loads app in iframe)
- * - Cookies (set by client-side when token is in URL params)
- * - We check both to support navigation from /upgrade to /owner
+ * Members can NEVER access /owner even via direct URL.
+ * Owners should ALWAYS end up on /owner.
  */
-async function checkOwnerAccess(searchParams?: { token?: string }): Promise<boolean> {
-  try {
-    const headersList = await headers();
-    const cookieStore = await cookies();
-    
-    // Get token from multiple sources:
-    // 1. Headers (Whop passes this when loading in iframe)
-    // 2. Cookies (set by client-side when token is in URL params)
-    // 3. URL search params (passed via searchParams prop)
-    const token = 
-      headersList.get("x-whop-user-token") || 
-      headersList.get("x-whop-token") || 
-      headersList.get("authorization")?.replace("Bearer ", "") ||
-      cookieStore.get("whop_token")?.value ||
-      searchParams?.token ||
-      null;
-
-    if (!token) {
-      // No token = not an owner
-      console.log("No token found in headers, cookies, or searchParams");
-      return false;
-    }
-
-    // Check ownership via internal API route
-    // Use relative URL for internal API calls (works in production)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                    (typeof process !== "undefined" && process.env.VERCEL_URL 
-                      ? `https://${process.env.VERCEL_URL}` 
-                      : "http://localhost:3000");
-    
-    try {
-      // Try relative URL first (works better in production)
-      let ownerResponse;
-      try {
-        ownerResponse = await fetch(`${baseUrl}/api/whop/me`, {
-          headers: {
-            "x-whop-user-token": token,
-            "x-whop-token": token,
-          },
-          cache: "no-store",
-        });
-      } catch (fetchError) {
-        // If absolute URL fails, try relative URL
-        console.log("Absolute URL failed, trying relative URL");
-        ownerResponse = await fetch("/api/whop/me", {
-          headers: {
-            "x-whop-user-token": token,
-            "x-whop-token": token,
-          },
-          cache: "no-store",
-        });
-      }
-
-      if (ownerResponse.ok) {
-        const ownerData = await ownerResponse.json();
-        // Strict check: isOwner === true only if explicitly true
-        const isOwner = ownerData.isOwner === true;
-        console.log("Owner check result:", { isOwner, role: ownerData.role });
-        return isOwner;
-      }
-
-      // Request failed = not an owner (secure default)
-      console.log("Owner API request failed:", ownerResponse.status);
-      return false;
-    } catch (err) {
-      console.error("Error checking owner access:", err);
-      // On error = not an owner (secure default)
-      return false;
-    }
-  } catch (error) {
-    console.error("Error in checkOwnerAccess:", error);
-    // On error = not an owner (secure default)
-    return false;
-  }
-}
-
-export default async function OwnerPage({
-  searchParams,
-}: {
-  searchParams?: { token?: string };
-}) {
+export default async function OwnerPage() {
   // Server-side ownership verification
   // This happens before any UI is rendered
-  const isOwner = await checkOwnerAccess(searchParams);
+  const { isOwner } = await getWhopUser();
 
-  if (!isOwner) {
+  if (isOwner !== true) {
     // Not an owner - redirect to upgrade page
     // This ensures members never see owner configuration UI
-    console.log("User is not an owner, redirecting to /upgrade");
+    // Members should ALWAYS end up on /upgrade
     redirect("/upgrade");
   }
 
   // Owner verified - render the owner configuration UI
-  console.log("User is owner, rendering OwnerPageClient");
+  // Owners should ALWAYS end up on /owner
   return <OwnerPageClient />;
 }
