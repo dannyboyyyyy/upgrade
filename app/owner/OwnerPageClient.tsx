@@ -147,7 +147,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
         .from("upgrade_sections")
           .select("*")
         .eq("company_id", companyId)
-        .single();
+        .maybeSingle();
 
         if (fetchError) {
           console.error("Supabase error:", fetchError);
@@ -156,22 +156,47 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
             setError("Database schema error: company_id column is missing. Please run the migration SQL script: add_company_id_column.sql");
             return;
           }
-          // If no data exists, set default plan
-          if (fetchError.code === "PGRST116") {
-            setOptions([{
-              title: "Plan 1",
-              plan_description: "",
-              monthly_price: 15,
-              yearly_price: 150,
-              monthly_checkout_url: "",
-              yearly_checkout_url: "",
-              description: [],
-              is_featured: false,
-            }]);
-            setCount(1);
-          } else {
-            setError(fetchError.message);
+          setError(fetchError.message);
+          return;
+        }
+
+        // If no row exists for this company, create default row (first install)
+        if (!data) {
+          const { error: createError } = await supabase
+            .from("upgrade_sections")
+            .upsert({
+              company_id: companyId,
+              upgrades: [],
+              brand_settings: {
+                brand_color: "#ff7a00",
+                logo_url: "",
+              },
+            }, {
+              onConflict: "company_id",
+            });
+
+          if (createError) {
+            console.error("Error creating default row:", createError);
+            setError(createError.message);
+            return;
           }
+
+          // After creating default row, use empty defaults
+          setOptions([{
+            title: "",
+            plan_description: "",
+            monthly_price: 0,
+            yearly_price: 0,
+            monthly_checkout_url: "",
+            yearly_checkout_url: "",
+            description: [],
+            is_featured: false,
+          }]);
+          setCount(1);
+          setBrandSettings({
+            logo_url: "",
+            brand_color: "#ff7a00",
+          });
         } else if (data) {
           // Load upgrades
           if (data.upgrades && Array.isArray(data.upgrades) && data.upgrades.length > 0) {

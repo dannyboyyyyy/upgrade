@@ -99,16 +99,46 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         .from("upgrade_sections")
           .select("*")
         .eq("company_id", companyId)
-        .single();
+        .maybeSingle();
 
         if (error) {
           console.error("Supabase error:", error);
           // Check if error is due to missing company_id column
           if (error.message?.includes("company_id does not exist")) {
             setError("Database schema error: company_id column is missing. Please run the migration SQL script: add_company_id_column.sql");
-          } else {
-            setError(error.message);
+            return;
           }
+          setError(error.message);
+          return;
+        }
+
+        // If no row exists for this company, create default row (first install)
+        if (!data) {
+          const { error: createError } = await supabase
+            .from("upgrade_sections")
+            .upsert({
+              company_id: companyId,
+              upgrades: [],
+              brand_settings: {
+                brand_color: "#ff7a00",
+                logo_url: "",
+              },
+            }, {
+              onConflict: "company_id",
+            });
+
+          if (createError) {
+            console.error("Error creating default row:", createError);
+            setError(createError.message);
+            return;
+          }
+
+          // After creating default row, use empty defaults
+          setPlans([]);
+          setBrandSettings({
+            logo_url: "",
+            brand_color: "#ff7a00",
+          });
         } else if (data) {
           // Load upgrades
           if (data.upgrades && Array.isArray(data.upgrades)) {
@@ -177,7 +207,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
           .from("upgrade_sections")
           .select("brand_settings")
           .eq("company_id", companyId)
-          .single();
+          .maybeSingle();
 
         if (!error && data?.brand_settings) {
           const newBrandColor = data.brand_settings.brand_color || data.brand_settings.primary_color;

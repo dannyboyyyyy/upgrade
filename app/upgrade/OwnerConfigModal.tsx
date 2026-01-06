@@ -104,7 +104,28 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor, companyId }: Own
           .from("upgrade_sections")
           .select("*")
           .eq("company_id", companyId)
-          .single();
+          .maybeSingle();
+
+        // If no row exists for this company, create default row (first install)
+        if (!fetchError && !data) {
+          const { error: createError } = await supabase
+            .from("upgrade_sections")
+            .upsert({
+              company_id: companyId,
+              upgrades: [],
+              brand_settings: {
+                brand_color: brandColor,
+                logo_url: "",
+              },
+            }, {
+              onConflict: "company_id",
+            });
+
+          if (createError) {
+            console.error("Error creating default row:", createError);
+            return;
+          }
+        }
 
         if (!fetchError && data) {
           if (data.upgrades && Array.isArray(data.upgrades) && data.upgrades.length > 0) {
