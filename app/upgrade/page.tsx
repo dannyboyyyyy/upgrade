@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { UpgradeClient } from "./UpgradeClient";
 import { whopsdk } from "../lib/whop-sdk";
 import { getUserPlan } from "../lib/getUserPlan";
-import { getPlanPermissions } from "../lib/getPlanPermissions";
+import { getPlanPermissions, type PlanPermissions } from "../lib/getPlanPermissions";
 import { getWhopUser } from "../lib/getWhopUser";
 import { getWhopCompanyId } from "../lib/getWhopCompanyId";
 
@@ -44,16 +44,17 @@ export default async function Page() {
     );
   }
 
-  // Get plan and permissions for user
-  const { plan, permissions } = await getMemberPlanAndPermissions();
-  
   // Detect if user is owner/admin
   const { isOwner, role } = await getWhopUser();
+  
+  // Get owner's plan and permissions (CRITICAL: Members see features based on owner's plan, not their own)
+  const ownerPlan = await getOwnerPlan(companyId, isOwner);
+  const ownerPermissions = getPlanPermissions(ownerPlan);
 
   return (
     <UpgradeClient
-      initialPlan={plan}
-      initialPermissions={permissions}
+      initialPlan={ownerPlan}
+      initialPermissions={ownerPermissions}
       isOwner={isOwner}
       role={role}
       companyId={companyId}
@@ -62,47 +63,44 @@ export default async function Page() {
 }
 
 /**
- * Get member's plan and permissions
+ * Get owner's plan for a company (SERVER-SIDE ONLY)
+ * 
+ * CRITICAL: Members see features based on owner's plan, not their own plan.
+ * This ensures members cannot see features that owner hasn't paid for.
+ * 
+ * Logic:
+ * - If current user is owner/admin → use their plan
+ * - If current user is member → default to "free" (most restrictive)
+ *   (In production, you might want to store owner plan in DB)
  */
-async function getMemberPlanAndPermissions(): Promise<{
-  plan: "free" | "premium" | "pro";
-  permissions: { showUpgradeBranding: boolean };
-}> {
+async function getOwnerPlan(companyId: string, isOwner: boolean): Promise<"free" | "premium" | "pro"> {
   try {
-    const headersList = await headers();
-    const token = 
-      headersList.get("x-whop-user-token") || 
-      headersList.get("x-whop-token") || 
-      headersList.get("authorization")?.replace("Bearer ", "");
+    // If current user is owner/admin, use their plan
+    if (isOwner) {
+      const headersList = await headers();
+      const token = 
+        headersList.get("x-whop-user-token") || 
+        headersList.get("x-whop-token") || 
+        headersList.get("authorization")?.replace("Bearer ", "");
 
-    if (!token) {
-      return {
-        plan: "free",
-        permissions: { showUpgradeBranding: true },
-      };
+      if (!token) {
+        return "free";
+      }
+
+      const { userId } = await whopsdk.verifyUserToken(token);
+      if (!userId) {
+        return "free";
+      }
+
+      return await getUserPlan(userId);
     }
 
-    // Verify token and get plan
-    const { userId } = await whopsdk.verifyUserToken(token);
-    if (!userId) {
-      return {
-        plan: "free",
-        permissions: { showUpgradeBranding: true },
-      };
-    }
-
-    const plan = await getUserPlan(userId);
-    const planPerms = getPlanPermissions(plan);
-
-    return {
-      plan,
-      permissions: { showUpgradeBranding: planPerms.showUpgradeBranding },
-    };
+    // Current user is member → default to free (most restrictive)
+    // This ensures members don't see features owner hasn't paid for
+    // TODO: In production, consider storing owner plan in database
+    return "free";
   } catch (error) {
-    console.error("Error getting member plan:", error);
-    return {
-      plan: "free",
-      permissions: { showUpgradeBranding: true },
-    };
+    console.error("Error getting owner plan:", error);
+    return "free";
   }
 }

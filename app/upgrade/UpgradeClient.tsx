@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { getEnv } from "../lib/env";
+import type { PlanPermissions } from "../lib/getPlanPermissions";
 
 // Environment variables for checkout URLs (loaded at module level)
 const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
@@ -28,9 +29,7 @@ type BrandSettings = {
 
 interface UpgradeClientProps {
   initialPlan: "free" | "premium" | "pro";
-  initialPermissions: {
-    showUpgradeBranding: boolean;
-  };
+  initialPermissions: PlanPermissions; // Full permissions based on owner's plan
   isOwner?: boolean;
   role?: "owner" | "admin" | "member";
   companyId: string; // Required for multi-tenant data isolation
@@ -53,9 +52,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
     brand_color: "#ff7a00",
   });
   const [plan, setPlan] = useState<"free" | "premium" | "pro">(initialPlan);
-  const [permissions, setPermissions] = useState<{
-    showUpgradeBranding: boolean;
-  }>(initialPermissions);
+  const [permissions, setPermissions] = useState<PlanPermissions>(initialPermissions);
   const [isYearly, setIsYearly] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -81,8 +78,10 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         
         if (response.ok) {
           const data = await response.json();
+          // Note: We use owner's permissions, not member's permissions
+          // This is set server-side in /upgrade/page.tsx
           setPlan(data.plan);
-          setPermissions({ showUpgradeBranding: data.permissions.showUpgradeBranding });
+          setPermissions(data.permissions);
         }
       } catch (err) {
         console.error("Error loading plan permissions:", err);
@@ -321,6 +320,8 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         <p style={styles.subtitle}>{permissions.showUpgradeBranding ? "Upgrade Your Account" : "Current Plan"}</p>
         <h1 style={styles.title}>Choose a right plan for you</h1>
 
+        {/* Yearly Toggle - Only show if owner has yearly permission */}
+        {permissions.canUseYearly && (
         <div style={styles.toggleContainer}>
           <label style={styles.toggleSwitch}>
             <input
@@ -380,6 +381,20 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
             </span>
           </label>
         </div>
+        )}
+
+        {/* Filter plans based on owner's maxPlans permission */}
+        {plans.length > permissions.maxPlans && (
+          <div style={{ 
+            textAlign: "center", 
+            color: "#fff", 
+            marginBottom: 16,
+            fontSize: 14,
+            opacity: 0.7
+          }}>
+            Showing {permissions.maxPlans} of {plans.length} plans
+          </div>
+        )}
 
         <div style={styles.gridContainer}>
           <div
@@ -393,7 +408,9 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
             ref={gridRef}
             data-grid
           >
-            {plans.map((plan, i) => {
+            {plans
+              .slice(0, permissions.maxPlans === Infinity ? plans.length : permissions.maxPlans)
+              .map((plan, i) => {
               // Always lift featured plan slightly, regardless of count
               // Non-featured plans stay at same height
               const isFeatured = plan.is_featured;
@@ -429,10 +446,10 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
               )}
               <div style={styles.priceContainer}>
                 <span style={{ ...styles.price, color: brandSettings.brand_color }}>
-                  ${isYearly ? plan.yearly_price : plan.monthly_price}
+                  ${permissions.canUseYearly && isYearly ? plan.yearly_price : plan.monthly_price}
                 </span>
                 <span style={styles.priceUnit}>
-                  /{isYearly ? "Year" : "Month"}
+                  /{permissions.canUseYearly && isYearly ? "Year" : "Month"}
                 </span>
               </div>
               {plan.description.length > 0 && (
@@ -464,8 +481,11 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
                     marginTop: "auto",
                   }}
                   onClick={() => {
+                  // Only allow yearly checkout if owner has yearly permission
+                  const useYearly = permissions.canUseYearly && isYearly;
+                  
                   // Priority: Use plan-specific checkout URL, fallback to environment variables
-                  let url: string | undefined = isYearly
+                  let url: string | undefined = useYearly
                     ? plan.yearly_checkout_url
                     : plan.monthly_checkout_url;
                   
@@ -474,11 +494,11 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
                     // Try to match plan title to Premium or Pro
                     const planTitle = plan.title.toLowerCase();
                     if (planTitle.includes("premium")) {
-                      url = isYearly
+                      url = useYearly
                         ? PREMIUM_YEARLY_PURCHASE_URL
                         : PREMIUM_MONTHLY_PURCHASE_URL;
                     } else if (planTitle.includes("pro")) {
-                      url = isYearly
+                      url = useYearly
                         ? PRO_YEARLY_PURCHASE_URL
                         : PRO_MONTHLY_PURCHASE_URL;
                     }
