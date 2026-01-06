@@ -4,6 +4,7 @@ import { whopsdk } from "../lib/whop-sdk";
 import { getUserPlan } from "../lib/getUserPlan";
 import { getPlanPermissions } from "../lib/getPlanPermissions";
 import { getWhopUser } from "../lib/getWhopUser";
+import { getWhopCompanyId } from "../lib/getWhopCompanyId";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,36 @@ export const dynamic = "force-dynamic";
  * Whop automatically routes members to /upgrade.
  * Owners can also access /upgrade and toggle admin mode inline.
  * No redirects based on role - both see the same page.
+ * 
+ * Multi-tenant: Data is isolated per company_id from Whop context.
  */
 export default async function Page() {
+  // Get company_id from Whop context (required for multi-tenant isolation)
+  const companyId = await getWhopCompanyId();
+  
+  if (!companyId) {
+    // No company_id means Whop context is missing
+    return (
+      <div style={{ 
+        minHeight: "100vh", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center",
+        background: "#0b0b0b",
+        color: "#fff",
+        textAlign: "center",
+        padding: 40
+      }}>
+        <div>
+          <h1 style={{ fontSize: 24, marginBottom: 16 }}>Open inside Whop</h1>
+          <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.7)" }}>
+            Please open this app from within your Whop experience.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Get plan and permissions for user
   const { plan, permissions } = await getMemberPlanAndPermissions();
   
@@ -27,6 +56,7 @@ export default async function Page() {
       initialPermissions={permissions}
       isOwner={isOwner}
       role={role}
+      companyId={companyId}
     />
   );
 }

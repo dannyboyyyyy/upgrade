@@ -47,8 +47,10 @@ export async function getWhopUser(): Promise<{
       };
     }
 
-    // Try to detect if user is owner/admin by checking company role
-    // In Whop, when previewing as another role, the user should not be considered owner
+    // Get user's company role from Whop API
+    // Determine ownership using Whop company role (single source of truth)
+    // isOwner === true only if role is "owner" or "admin"
+    // On error or unknown role → isOwner = false (fail-secure)
     try {
       // Use Whop SDK to retrieve user information
       const user = await whopsdk.users.retrieve(userId);
@@ -65,7 +67,7 @@ export async function getWhopUser(): Promise<{
         null;
       
       // Ownership logic: isOwner === true only if role is "owner" or "admin"
-      // This ensures preview mode as another role doesn't grant owner access
+      // This ensures only owners/admins see the dashboard button, not members
       const isOwner = userRole === "owner" || userRole === "admin";
       
       const role: "owner" | "admin" | "member" = isOwner 
@@ -79,6 +81,7 @@ export async function getWhopUser(): Promise<{
     } catch (userError) {
       console.error("Error fetching user role:", userError);
       // On error, default to member (fail-secure - don't grant owner access on error)
+      // Members should NOT see the dashboard button
       return {
         isOwner: false,
         role: "member",

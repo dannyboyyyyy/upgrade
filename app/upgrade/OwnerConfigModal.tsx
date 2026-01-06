@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { PlanPermissions } from "../lib/getPlanPermissions";
 
-const OWNER_ID = "whop-app";
-
 type UpgradeOption = {
   title: string;
   plan_description: string;
@@ -26,6 +24,7 @@ interface OwnerConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   brandColor: string;
+  companyId: string; // Required for multi-tenant data isolation
 }
 
 /**
@@ -39,8 +38,10 @@ interface OwnerConfigModalProps {
  * 
  * Security: Ownership is verified server-side before this component is rendered.
  * Members must NEVER see this UI, markup, or hints.
+ * 
+ * Multi-tenant: All data is filtered by companyId for isolation.
  */
-export function OwnerConfigModal({ isOpen, onClose, brandColor }: OwnerConfigModalProps) {
+export function OwnerConfigModal({ isOpen, onClose, brandColor, companyId }: OwnerConfigModalProps) {
   const [options, setOptions] = useState<UpgradeOption[]>([
     {
       title: "",
@@ -102,7 +103,7 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor }: OwnerConfigMod
         const { data, error: fetchError } = await supabase
           .from("upgrade_sections")
           .select("*")
-          .eq("owner_id", OWNER_ID)
+          .eq("company_id", companyId)
           .single();
 
         if (!fetchError && data) {
@@ -198,11 +199,11 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor }: OwnerConfigMod
         .from("upgrade_sections")
         .upsert(
           {
-            owner_id: OWNER_ID,
+            company_id: companyId,
             upgrades: upgradesWithPrice,
           },
           {
-            onConflict: "owner_id",
+            onConflict: "company_id",
           }
         );
 
@@ -215,7 +216,7 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor }: OwnerConfigMod
         await supabase
           .from("upgrade_sections")
           .update({ brand_settings: brandSettings })
-          .eq("owner_id", OWNER_ID);
+          .eq("company_id", companyId);
       } catch (err) {
         console.warn("Brand settings update failed:", err);
       }

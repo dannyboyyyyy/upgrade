@@ -26,8 +26,6 @@ type BrandSettings = {
   brand_color: string;
 };
 
-const OWNER_ID = "whop-app";
-
 interface UpgradeClientProps {
   initialPlan: "free" | "premium" | "pro";
   initialPermissions: {
@@ -35,6 +33,7 @@ interface UpgradeClientProps {
   };
   isOwner?: boolean;
   role?: "owner" | "admin" | "member";
+  companyId: string; // Required for multi-tenant data isolation
 }
 
 /**
@@ -42,8 +41,10 @@ interface UpgradeClientProps {
  * 
  * Members see normal upgrade UI.
  * Owners/admins can toggle admin mode to configure plans and branding.
+ * 
+ * Multi-tenant: All data is filtered by companyId for isolation.
  */
-export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false, role = "member" }: UpgradeClientProps) {
+export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false, role = "member", companyId }: UpgradeClientProps) {
   const [plans, setPlans] = useState<UpgradeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
       const { data, error } = await supabase
         .from("upgrade_sections")
           .select("*")
-        .eq("owner_id", OWNER_ID)
+        .eq("company_id", companyId)
         .single();
 
         if (error) {
@@ -170,7 +171,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         const { data, error } = await supabase
           .from("upgrade_sections")
           .select("brand_settings")
-          .eq("owner_id", OWNER_ID)
+          .eq("company_id", companyId)
           .single();
 
         if (!error && data?.brand_settings) {

@@ -6,8 +6,6 @@ import type { PlanPermissions } from "../lib/getPlanPermissions";
 
 export const dynamic = "force-dynamic";
 
-const OWNER_ID = "whop-app"; // fast owner, ingen auth
-
 type UpgradeOption = {
   title: string;
   plan_description: string;
@@ -24,14 +22,20 @@ type BrandSettings = {
   brand_color: string;
 };
 
+interface OwnerPageClientProps {
+  companyId: string; // Required for multi-tenant data isolation
+}
+
 /**
  * Owner Page Client Component
  * 
  * NOTE: Ownership is verified server-side in page.tsx before this component is rendered.
  * This component only loads plan permissions and configuration UI.
  * Members are never able to access this component - they are redirected server-side.
+ * 
+ * Multi-tenant: All data is filtered by companyId for isolation.
  */
-export default function OwnerPageClient() {
+export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
   const [count, setCount] = useState(1);
   const [options, setOptions] = useState<UpgradeOption[]>([
     {
@@ -142,7 +146,7 @@ export default function OwnerPageClient() {
         const { data, error: fetchError } = await supabase
         .from("upgrade_sections")
           .select("*")
-        .eq("owner_id", OWNER_ID)
+        .eq("company_id", companyId)
         .single();
 
         if (fetchError) {
@@ -290,17 +294,17 @@ export default function OwnerPageClient() {
       .from("upgrade_sections")
         .upsert(
           {
-      owner_id: OWNER_ID,
+      company_id: companyId,
             upgrades: upgradesWithPrice,
           },
           {
-            onConflict: "owner_id",
+            onConflict: "company_id",
           }
         );
 
       if (upsertError) {
         console.error("Upsert error:", upsertError);
-        console.error("Attempted to save:", { owner_id: OWNER_ID, upgrades: upgradesWithPrice });
+        console.error("Attempted to save:", { company_id: companyId, upgrades: upgradesWithPrice });
         const errorMsg = upsertError.message || upsertError.details || JSON.stringify(upsertError);
         throw new Error(`Save failed: ${errorMsg}`);
       }
@@ -314,7 +318,7 @@ export default function OwnerPageClient() {
         const { error: brandError } = await supabase
           .from("upgrade_sections")
           .update({ brand_settings: brandSettings })
-      .eq("owner_id", OWNER_ID);
+      .eq("company_id", companyId);
 
         if (brandError) {
           console.warn("Brand settings update failed (column may not exist):", brandError);
@@ -728,97 +732,6 @@ export default function OwnerPageClient() {
                 >
                   {plan === "free" ? "Current Plan" : "Select Plan"}
                 </button>
-                
-                {/* Pricing featured by - Clickable, redirects to Plans tab */}
-                <div
-                  onClick={() => setActiveTab("plans")}
-          style={{
-                    marginTop: 20,
-                    paddingTop: 20,
-                    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 10,
-                    cursor: "pointer",
-                    transition: "opacity 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = "0.8";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = "1";
-                  }}
-                >
-                  <p style={{
-                    fontSize: 13,
-                    color: "rgba(255, 255, 255, 0.6)",
-                    margin: 0,
-                    fontWeight: 500,
-                  }}>
-                    Pricing featured by
-                  </p>
-                  {brandSettings.logo_url ? (
-                    <div style={{
-                      width: 70,
-                      height: 70,
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: `2px solid ${brandSettings.brand_color}40`,
-                      transition: "transform 0.2s, border-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "scale(1.05)";
-                      e.currentTarget.style.borderColor = brandSettings.brand_color;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.borderColor = `${brandSettings.brand_color}40`;
-                    }}
-                    >
-                      <img
-                        src={brandSettings.logo_url}
-                        alt="Logo"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "contain",
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div style={{
-                      width: 70,
-                      height: 70,
-                      borderRadius: 12,
-                      background: "rgba(255, 255, 255, 0.05)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: `2px solid ${brandSettings.brand_color}40`,
-                      transition: "transform 0.2s, border-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "scale(1.05)";
-                      e.currentTarget.style.borderColor = brandSettings.brand_color;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.borderColor = `${brandSettings.brand_color}40`;
-                    }}
-                    >
-                      <span style={{
-                        fontSize: 28,
-                        color: brandSettings.brand_color,
-                        fontWeight: 600,
-                      }}>N</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* Tier 3: Pro - Always in middle and featured */}
@@ -1151,7 +1064,7 @@ export default function OwnerPageClient() {
                           const { error } = await supabase
                             .from("upgrade_sections")
                             .update({ brand_settings: { ...brandSettings, brand_color: newColor } })
-                            .eq("owner_id", OWNER_ID);
+                            .eq("company_id", companyId);
                           
                           if (error) {
                             console.error("Auto-save brand color error:", error);
@@ -1159,10 +1072,10 @@ export default function OwnerPageClient() {
                               .from("upgrade_sections")
                               .upsert(
                                 {
-                                  owner_id: OWNER_ID,
+                                  company_id: companyId,
                                   brand_settings: { ...brandSettings, brand_color: newColor },
                                 },
-                                { onConflict: "owner_id" }
+                                { onConflict: "company_id" }
                               );
                             if (upsertError) {
                               console.error("Auto-save brand color upsert also failed:", upsertError);
@@ -1188,7 +1101,7 @@ export default function OwnerPageClient() {
                           const { error } = await supabase
                             .from("upgrade_sections")
                             .update({ brand_settings: { ...brandSettings, brand_color: newColor } })
-                            .eq("owner_id", OWNER_ID);
+                            .eq("company_id", companyId);
                           
                           if (error) {
                             console.error("Auto-save brand color error:", error);
@@ -1196,10 +1109,10 @@ export default function OwnerPageClient() {
                               .from("upgrade_sections")
                               .upsert(
                                 {
-                                  owner_id: OWNER_ID,
+                                  company_id: companyId,
                                   brand_settings: { ...brandSettings, brand_color: newColor },
                                 },
-                                { onConflict: "owner_id" }
+                                { onConflict: "company_id" }
                               );
                             if (upsertError) {
                               console.error("Auto-save brand color upsert also failed:", upsertError);
