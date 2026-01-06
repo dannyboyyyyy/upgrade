@@ -103,7 +103,12 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
 
         if (error) {
           console.error("Supabase error:", error);
-          setError(error.message);
+          // Check if error is due to missing company_id column
+          if (error.message?.includes("company_id does not exist")) {
+            setError("Database schema error: company_id column is missing. Please run the migration SQL script: add_company_id_column.sql");
+          } else {
+            setError(error.message);
+          }
         } else if (data) {
           // Load upgrades
           if (data.upgrades && Array.isArray(data.upgrades)) {

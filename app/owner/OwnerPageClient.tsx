@@ -151,6 +151,11 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
 
         if (fetchError) {
           console.error("Supabase error:", fetchError);
+          // Check if error is due to missing company_id column
+          if (fetchError.message?.includes("company_id does not exist")) {
+            setError("Database schema error: company_id column is missing. Please run the migration SQL script: add_company_id_column.sql");
+            return;
+          }
           // If no data exists, set default plan
           if (fetchError.code === "PGRST116") {
             setOptions([{
