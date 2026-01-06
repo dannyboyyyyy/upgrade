@@ -112,6 +112,7 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor, companyId }: Own
             .from("upgrade_sections")
             .upsert({
               company_id: companyId,
+              owner_id: companyId,
               upgrades: [],
               brand_settings: {
                 brand_color: brandColor,
@@ -221,6 +222,7 @@ export function OwnerConfigModal({ isOpen, onClose, brandColor, companyId }: Own
         .upsert(
           {
             company_id: companyId,
+            owner_id: companyId,
             upgrades: upgradesWithPrice,
           },
           {

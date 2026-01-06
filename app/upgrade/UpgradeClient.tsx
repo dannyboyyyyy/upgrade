@@ -118,6 +118,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
             .from("upgrade_sections")
             .upsert({
               company_id: companyId,
+              owner_id: companyId,
               upgrades: [],
               brand_settings: {
                 brand_color: "#ff7a00",

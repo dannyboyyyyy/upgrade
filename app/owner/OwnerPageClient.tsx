@@ -166,6 +166,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
             .from("upgrade_sections")
             .upsert({
               company_id: companyId,
+              owner_id: companyId,
               upgrades: [],
               brand_settings: {
                 brand_color: "#ff7a00",
@@ -325,6 +326,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
         .upsert(
           {
       company_id: companyId,
+            owner_id: companyId,
             upgrades: upgradesWithPrice,
           },
           {
@@ -1103,6 +1105,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
                               .upsert(
                                 {
                                   company_id: companyId,
+                                  owner_id: companyId,
                                   brand_settings: { ...brandSettings, brand_color: newColor },
                                 },
                                 { onConflict: "company_id" }
@@ -1140,6 +1143,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
                               .upsert(
                                 {
                                   company_id: companyId,
+                                  owner_id: companyId,
                                   brand_settings: { ...brandSettings, brand_color: newColor },
                                 },
                                 { onConflict: "company_id" }
