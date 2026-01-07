@@ -869,15 +869,9 @@ export default function OwnerPageClient({ companyId, initialAccountPlan = "free"
                   </ul>
                   <button
                     onClick={() => {
-                      // Redirect to Whop checkout for Pro using environment variables
-                      const proUrl = isYearly
-                        ? process.env.NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL
-                        : process.env.NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL;
-                      if (proUrl) {
-                        window.location.href = proUrl;
-                      } else {
-                        alert("Pro checkout URL not configured. Please contact support.");
-                      }
+                      // HARDCODED CHECKOUT - Pro plan always uses Pro checkout URL
+                      // Monthly/yearly toggle does NOT affect checkout URL
+                      window.location.href = "https://whop.com/api-app-v-yf-ddcqkc-oa-ya-1-pro/";
                     }}
                     style={{
                       width: "100%",
@@ -970,14 +964,9 @@ export default function OwnerPageClient({ companyId, initialAccountPlan = "free"
                   </ul>
                 <button
                   onClick={() => {
-                    // Redirect to Whop checkout for Premium using environment variables
-                    // Premium only supports monthly (yearly explicitly disabled)
-                    const premiumUrl = process.env.NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL;
-                    if (premiumUrl) {
-                      window.location.href = premiumUrl;
-                    } else {
-                      alert("Premium checkout URL not configured. Please contact support.");
-                    }
+                    // HARDCODED CHECKOUT - Premium plan always uses Premium checkout URL
+                    // Monthly/yearly toggle does NOT affect checkout URL
+                    window.location.href = "https://whop.com/api-app-v-yf-ddcqkc-oa-ya-1-premium/";
                   }}
                     style={{
                       width: "100%",
