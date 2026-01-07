@@ -2,14 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { getEnv } from "../lib/env";
 import type { PlanPermissions } from "../lib/getPlanPermissions";
-
-// Environment variables for checkout URLs (loaded at module level)
-const PREMIUM_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL");
-const PREMIUM_YEARLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL");
-const PRO_MONTHLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL");
-const PRO_YEARLY_PURCHASE_URL = getEnv("NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL");
+import { getCheckoutLink } from "../lib/checkoutLinks";
 
 type UpgradeOption = {
   title: string;
@@ -486,34 +480,24 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
                     marginTop: "auto",
                   }}
                   onClick={() => {
-                  // Only allow yearly checkout if owner has yearly permission
-                  const useYearly = permissions.canUseYearly && isYearly;
+                  // Determine plan type from plan title (case-insensitive)
+                  const planTitle = plan.title.toLowerCase();
+                  let planType: "pro" | "premium" | null = null;
                   
-                  // Priority: Use plan-specific checkout URL, fallback to environment variables
-                  let url: string | undefined = useYearly
-                    ? plan.yearly_checkout_url
-                    : plan.monthly_checkout_url;
-                  
-                  // If no plan-specific URL, try to determine plan type and use env vars
-                  if (!url && plan.title) {
-                    // Try to match plan title to Premium or Pro
-                    const planTitle = plan.title.toLowerCase();
-                    if (planTitle.includes("premium")) {
-                      url = useYearly
-                        ? PREMIUM_YEARLY_PURCHASE_URL
-                        : PREMIUM_MONTHLY_PURCHASE_URL;
-                    } else if (planTitle.includes("pro")) {
-                      url = useYearly
-                        ? PRO_YEARLY_PURCHASE_URL
-                        : PRO_MONTHLY_PURCHASE_URL;
-                    }
+                  if (planTitle.includes("pro")) {
+                    planType = "pro";
+                  } else if (planTitle.includes("premium")) {
+                    planType = "premium";
                   }
                   
-                  if (url) {
-                    window.location.href = url;
+                  // Redirect to checkout - plan type is the ONLY factor
+                  // Monthly/yearly toggle does NOT affect checkout URL
+                  if (planType) {
+                    const checkoutUrl = getCheckoutLink(planType);
+                    window.location.href = checkoutUrl;
                   } else {
-                    console.error("No checkout URL available for this plan");
-                    alert("Checkout URL not configured. Please contact support.");
+                    console.error("Cannot determine plan type from title:", plan.title);
+                    alert("Unable to determine plan type. Please contact support.");
                   }
                 }}
               >
