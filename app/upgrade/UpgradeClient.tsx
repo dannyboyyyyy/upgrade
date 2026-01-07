@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import type { PlanPermissions } from "../lib/getPlanPermissions";
-import { getCheckoutLink } from "../lib/checkoutLinks";
 
 type UpgradeOption = {
   title: string;
@@ -480,21 +479,13 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
                     marginTop: "auto",
                   }}
                   onClick={() => {
-                  // Determine plan type from plan title (case-insensitive)
+                  // HARDCODED CHECKOUT - Plan title determines checkout URL
                   const planTitle = plan.title.toLowerCase();
-                  let planType: "pro" | "premium" | null = null;
                   
                   if (planTitle.includes("pro")) {
-                    planType = "pro";
+                    window.location.href = "https://whop.com/api-app-v-yf-ddcqkc-oa-ya-1-pro/";
                   } else if (planTitle.includes("premium")) {
-                    planType = "premium";
-                  }
-                  
-                  // Redirect to checkout - plan type is the ONLY factor
-                  // Monthly/yearly toggle does NOT affect checkout URL
-                  if (planType) {
-                    const checkoutUrl = getCheckoutLink(planType);
-                    window.location.href = checkoutUrl;
+                    window.location.href = "https://whop.com/api-app-v-yf-ddcqkc-oa-ya-1-premium/";
                   } else {
                     console.error("Cannot determine plan type from title:", plan.title);
                     alert("Unable to determine plan type. Please contact support.");
