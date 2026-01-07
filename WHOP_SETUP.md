@@ -48,7 +48,7 @@ PRO_PRODUCT_ID=your_pro_product_id
 # Whop Checkout URLs (Client-accessible)
 # Use separate monthly/yearly URLs if available, or single URL that handles both
 NEXT_PUBLIC_PREMIUM_MONTHLY_PURCHASE_URL=https://whop.com/checkout/xxx
-NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL=https://whop.com/checkout/xxx-yearly
+NEXT_PUBLIC_PREMIUM_YEARLY_PURCHASE_URL=https://whop.com/checkout/plan_dmakmgUTWUogp
 NEXT_PUBLIC_PRO_MONTHLY_PURCHASE_URL=https://whop.com/checkout/yyy
 NEXT_PUBLIC_PRO_YEARLY_PURCHASE_URL=https://whop.com/checkout/yyy-yearly
 
