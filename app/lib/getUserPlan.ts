@@ -1,147 +1,133 @@
 import { whopsdk } from "./whop-sdk";
 
 /**
- * Get user's plan by checking successful payments (Orders) from Whop Payments API
+ * Get user's plan by checking Whop App entitlements (subscription products)
  * 
  * CRITICAL: Permissions are tied to the USER's account (userId), not to a specific Whop company.
  * If a user purchases Premium/Pro, they should have access in ALL Whop companies they use.
  * 
- * This function uses Whop Payments (Orders) as the single source of truth:
- * 1. Fetches orders from Whop API scoped to the Upgrade Whop
- * 2. Filters orders by:
- *    - order.user_id === userId
- *    - order.status === "succeeded"
- *    - order.product_id matches PRO_PRODUCT_ID or PREMIUM_PRODUCT_ID
- * 3. Returns highest tier found (Pro > Premium > Free)
+ * This function uses Whop App entitlements as the single source of truth:
+ * 1. Checks access to PREMIUM_PLAN_ID (Whop App subscription product)
+ * 2. If Premium access → return "premium"
+ * 3. Else checks access to PRO_PLAN_ID (Whop App subscription product)
+ * 4. If Pro access → return "pro"
+ * 5. Else → return "free"
  * 
  * Whop API endpoints used:
- * - whopsdk.orders.list() - Fetches orders/payments from Whop Payments
+ * - whopsdk.users.checkAccess(productId, { id: userId })
+ *   This checks if the user has active entitlement to the App subscription product
  */
 export async function getUserPlan(userId: string): Promise<"free" | "premium" | "pro"> {
   try {
-    const proProductId = process.env.PRO_PRODUCT_ID;
-    const premiumProductId = process.env.PREMIUM_PRODUCT_ID;
+    // Read environment variables for plan product IDs
+    const premiumPlanId = process.env.PREMIUM_PLAN_ID;
+    const proPlanId = process.env.PRO_PLAN_ID;
 
-    // Validate that Product IDs are configured
-    if (!proProductId || !premiumProductId) {
-      console.warn("[getUserPlan] PRO_PRODUCT_ID or PREMIUM_PRODUCT_ID not configured in environment variables");
-      return "free";
+    // Validate that Plan IDs are configured - throw clear error if missing
+    if (!premiumPlanId) {
+      throw new Error("PREMIUM_PLAN_ID environment variable is not configured");
+    }
+    if (!proPlanId) {
+      throw new Error("PRO_PLAN_ID environment variable is not configured");
     }
 
     // Log configuration
-    console.log("[getUserPlan] Checking plan for user:", {
+    console.log("[getUserPlan] Checking entitlements for user:", {
       userId,
-      proProductId,
-      premiumProductId,
+      premiumPlanId,
+      proPlanId,
     });
 
-    let foundProPayment = false;
-    let foundPremiumPayment = false;
-
-    // PRIMARY METHOD: Fetch orders/payments from Whop Payments API
+    // Step 1: Check Premium entitlement first
     try {
-      // Fetch orders from Whop API
-      // Note: This fetches orders scoped to the Upgrade Whop (via WHOP_APP_ID)
-      const ordersResponse = await (whopsdk as any).orders?.list({ 
-        user_id: userId,
-        status: "succeeded",
-      }) || { data: [] };
-
-      const orders = ordersResponse.data || [];
+      const premiumAccess = await whopsdk.users.checkAccess(premiumPlanId, { id: userId });
       
-      // Log fetched orders for debugging
-      console.log(`[getUserPlan] Fetched ${orders.length} succeeded orders for user ${userId}`);
-
-      // Filter and check each order
-      for (const order of orders) {
-        const orderProductId = order.product_id || order.product?.id;
-        const orderStatus = order.status;
-        const orderUserId = order.user_id || order.user?.id;
-
-        // Log each order for debugging
-        console.log(`[getUserPlan] Checking order:`, {
-          orderId: order.id,
-          orderProductId,
-          orderStatus,
-          orderUserId,
-          matchesUserId: orderUserId === userId,
-        });
-
-        // Filter: Must match userId, status must be "succeeded", and have product_id
-        if (orderUserId !== userId) {
-          continue;
-        }
-
-        if (orderStatus !== "succeeded") {
-          continue;
-        }
-
-        if (!orderProductId) {
-          continue;
-        }
-
-        // Check if order is for Pro product
-        if (orderProductId === proProductId) {
-          foundProPayment = true;
-          console.log(`[getUserPlan] ✅ Found succeeded Pro payment for user ${userId}, order: ${order.id}`);
-        }
-
-        // Check if order is for Premium product
-        if (orderProductId === premiumProductId) {
-          foundPremiumPayment = true;
-          console.log(`[getUserPlan] ✅ Found succeeded Premium payment for user ${userId}, order: ${order.id}`);
-        }
-      }
-
-      // Log matched product IDs
-      if (foundProPayment || foundPremiumPayment) {
-        console.log(`[getUserPlan] Matched payments:`, {
-          userId,
-          foundProPayment,
-          foundPremiumPayment,
-          proProductId: foundProPayment ? proProductId : null,
-          premiumProductId: foundPremiumPayment ? premiumProductId : null,
-        });
-      }
-
-    } catch (ordersError: any) {
-      // If orders API fails, log error
-      console.error("[getUserPlan] Error fetching orders from Whop API:", {
-        error: ordersError?.message || ordersError,
-        errorStack: ordersError?.stack,
-        userId,
-        proProductId,
-        premiumProductId,
+      // Log full checkAccess response
+      console.log(`[getUserPlan] Premium entitlement check for user ${userId}:`, {
+        productId: premiumPlanId,
+        response: JSON.stringify(premiumAccess, null, 2),
+        hasAccess: premiumAccess?.has_access,
+        accessLevel: premiumAccess?.access_level,
       });
+
+      // Treat ANY truthy access response as valid
+      // has_access === true is the primary indicator
+      const hasPremiumAccess = premiumAccess?.has_access === true;
+
+      if (hasPremiumAccess) {
+        const resolvedPlan = "premium";
+        console.log(`[getUserPlan] ✅ Resolved plan for user ${userId}:`, {
+          plan: resolvedPlan,
+          productId: premiumPlanId,
+          hasAccess: premiumAccess?.has_access,
+          accessLevel: premiumAccess?.access_level,
+        });
+        return resolvedPlan;
+      }
+    } catch (premiumError: any) {
+      // Log error but continue to check Pro
+      console.error(`[getUserPlan] Error checking Premium entitlement for user ${userId}:`, {
+        error: premiumError?.message || premiumError,
+        errorStack: premiumError?.stack,
+        productId: premiumPlanId,
+      });
+    }
+
+    // Step 2: Check Pro entitlement (only if Premium not found)
+    try {
+      const proAccess = await whopsdk.users.checkAccess(proPlanId, { id: userId });
       
-      // Return free on error (safe default)
-      return "free";
+      // Log full checkAccess response
+      console.log(`[getUserPlan] Pro entitlement check for user ${userId}:`, {
+        productId: proPlanId,
+        response: JSON.stringify(proAccess, null, 2),
+        hasAccess: proAccess?.has_access,
+        accessLevel: proAccess?.access_level,
+      });
+
+      // Treat ANY truthy access response as valid
+      // has_access === true is the primary indicator
+      const hasProAccess = proAccess?.has_access === true;
+
+      if (hasProAccess) {
+        const resolvedPlan = "pro";
+        console.log(`[getUserPlan] ✅ Resolved plan for user ${userId}:`, {
+          plan: resolvedPlan,
+          productId: proPlanId,
+          hasAccess: proAccess?.has_access,
+          accessLevel: proAccess?.access_level,
+        });
+        return resolvedPlan;
+      }
+    } catch (proError: any) {
+      // Log error but continue to return free
+      console.error(`[getUserPlan] Error checking Pro entitlement for user ${userId}:`, {
+        error: proError?.message || proError,
+        errorStack: proError?.stack,
+        productId: proPlanId,
+      });
     }
 
-    // Resolve plan: Pro takes precedence over Premium
-    let resolvedPlan: "free" | "premium" | "pro" = "free";
-    
-    if (foundProPayment) {
-      resolvedPlan = "pro";
-    } else if (foundPremiumPayment) {
-      resolvedPlan = "premium";
-    }
-
-    // Log resolved plan
+    // Step 3: No entitlements found → return free
+    const resolvedPlan = "free";
     console.log(`[getUserPlan] ✅ Resolved plan for user ${userId}:`, {
       plan: resolvedPlan,
-      foundProPayment,
-      foundPremiumPayment,
+      reason: "No Premium or Pro entitlements found",
     });
-
     return resolvedPlan;
+
   } catch (error: any) {
+    // Re-throw configuration errors
+    if (error.message?.includes("environment variable is not configured")) {
+      throw error;
+    }
+
+    // Log and return free for other errors
     console.error("[getUserPlan] Unexpected error checking user plan:", {
       error: error?.message || error,
       errorStack: error?.stack,
       userId,
     });
-    // On error, default to free (safe default)
     return "free";
   }
 }
