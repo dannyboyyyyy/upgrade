@@ -3,71 +3,99 @@ import { whopsdk } from "./whop-sdk";
 /**
  * Get user's plan by checking access to Premium/Pro products
  * 
- * This function tries multiple approaches:
- * 1. Check hardcoded Product IDs from env vars (backward compatible)
- * 2. List user's accessible products and match by name/price
- * 3. Default to "free" if no access found
+ * CRITICAL: Permissions are tied to the USER's account (userId), not to a specific Whop company.
+ * If a user purchases Premium/Pro, they should have access in ALL Whop companies they use.
  * 
- * This allows the app to work across multiple Whop companies where
- * Product IDs differ, as long as products are named "Premium" or "Pro"
+ * This function checks:
+ * 1. User's orders/purchases across all companies
+ * 2. Matches products by name (Premium/Pro) or price ($9.99/$14.99)
+ * 3. Returns highest tier found (Pro > Premium > Free)
  */
 export async function getUserPlan(userId: string): Promise<"free" | "premium" | "pro"> {
   try {
-    // Approach 1: Try hardcoded Product IDs first (if set)
-    const proProductId = process.env.PRO_PRODUCT_ID;
-    const premiumProductId = process.env.PREMIUM_PRODUCT_ID;
-    
-    if (proProductId && premiumProductId) {
-      try {
-        const proAccess = await whopsdk.users.checkAccess(
-          proProductId,
-          { id: userId }
-        );
+    let foundPro = false;
+    let foundPremium = false;
 
-        const premiumAccess = await whopsdk.users.checkAccess(
-          premiumProductId,
-          { id: userId }
-        );
-
-        const isPro =
-          proAccess.has_access && proAccess.access_level === "customer";
-
-        const isPremium =
-          premiumAccess.has_access && premiumAccess.access_level === "customer";
-
-        if (isPro) return "pro";
-        if (isPremium) return "premium";
-      } catch (envError) {
-        // If env Product IDs fail, try dynamic approach
-        console.log("Env Product IDs check failed, trying dynamic product lookup:", envError);
-      }
-    }
-
-    // Approach 2: Try to find products by listing user's company products
-    // This is a workaround for multi-tenant where Product IDs differ per company
+    // Approach 1: Check user's orders to find Premium/Pro purchases
+    // This works across all Whop companies the user has access to
     try {
-      // Get user info to find company_id
-      const user = await whopsdk.users.retrieve(userId);
-      const userObj = user as any;
-      const companyId = userObj?.company_id || userObj?.companyId || userObj?.company?.id;
+      // Get user's orders/purchases
+      const orders = await (whopsdk as any).orders?.list({ user_id: userId }) || { data: [] };
       
-      if (companyId) {
-        // Try to list products for this company and match by name
-        // Note: This might not be available in all Whop SDK versions
-        // As a fallback, we rely on env Product IDs or return free
+      // Check each order for Premium/Pro products
+      for (const order of orders.data || []) {
+        if (order.status !== "completed" && order.status !== "active") {
+          continue;
+        }
+
+        // Get product details from order
+        const productId = order.product_id || order.product?.id;
+        if (!productId) continue;
+
         try {
-          // Attempt to get products (this may require different SDK method)
-          // For now, we'll rely on the env Product IDs working
-          // If they don't, we'll default to free
-        } catch (companyProductsError) {
-          console.log("Could not list company products:", companyProductsError);
+          const product = await whopsdk.products.retrieve(productId);
+          const productObj = product as any;
+          const productName = (productObj?.name || "").toLowerCase();
+          const productPrice = productObj?.price || 0;
+
+          // Match Pro: name contains "pro" OR price is around $14.99
+          if (
+            productName.includes("pro") ||
+            (productPrice >= 14.00 && productPrice <= 15.99) ||
+            productPrice >= 89.00 // Yearly Pro ($89.99)
+          ) {
+            foundPro = true;
+          }
+
+          // Match Premium: name contains "premium" OR price is around $9.99
+          if (
+            productName.includes("premium") ||
+            (productPrice >= 9.00 && productPrice <= 10.99) ||
+            (productPrice >= 89.00 && productPrice <= 90.00) // Yearly Premium ($89.99)
+          ) {
+            foundPremium = true;
+          }
+        } catch (productError) {
+          // Skip products we can't retrieve
+          continue;
         }
       }
-    } catch (dynamicError) {
-      console.error("Error in dynamic product lookup:", dynamicError);
+    } catch (ordersError) {
+      console.log("Could not fetch user orders, trying alternative method:", ordersError);
     }
 
-    // No access found
+    // Approach 2: Fallback - Try hardcoded Product IDs from env vars
+    // This is for backward compatibility but should not be primary method
+    if (!foundPro && !foundPremium) {
+      const proProductId = process.env.PRO_PRODUCT_ID;
+      const premiumProductId = process.env.PREMIUM_PRODUCT_ID;
+      
+      if (proProductId) {
+        try {
+          const proAccess = await whopsdk.users.checkAccess(proProductId, { id: userId });
+          if (proAccess.has_access && proAccess.access_level === "customer") {
+            foundPro = true;
+          }
+        } catch (proError) {
+          console.log("Pro Product ID check failed:", proError);
+        }
+      }
+
+      if (!foundPro && premiumProductId) {
+        try {
+          const premiumAccess = await whopsdk.users.checkAccess(premiumProductId, { id: userId });
+          if (premiumAccess.has_access && premiumAccess.access_level === "customer") {
+            foundPremium = true;
+          }
+        } catch (premiumError) {
+          console.log("Premium Product ID check failed:", premiumError);
+        }
+      }
+    }
+
+    // Return highest tier found
+    if (foundPro) return "pro";
+    if (foundPremium) return "premium";
     return "free";
   } catch (error) {
     console.error("Error checking user plan:", error);
