@@ -24,6 +24,7 @@ type BrandSettings = {
 
 interface OwnerPageClientProps {
   companyId: string; // Required for multi-tenant data isolation
+  initialAccountPlan?: "free" | "premium" | "pro"; // Account-scoped plan (server-side resolved)
 }
 
 /**
@@ -35,7 +36,7 @@ interface OwnerPageClientProps {
  * 
  * Multi-tenant: All data is filtered by companyId for isolation.
  */
-export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
+export default function OwnerPageClient({ companyId, initialAccountPlan = "free" }: OwnerPageClientProps) {
   const [count, setCount] = useState(1);
   const [options, setOptions] = useState<UpgradeOption[]>([
     {
@@ -53,7 +54,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [isYearly, setIsYearly] = useState(false);
   const [activeTab, setActiveTab] = useState<"plans" | "preview" | "designing">("plans");
-  const [plan, setPlan] = useState<"free" | "premium" | "pro">("free");
+  const [plan, setPlan] = useState<"free" | "premium" | "pro">(initialAccountPlan);
   const [permissions, setPermissions] = useState<PlanPermissions>({
     plan: "free",
     maxPlans: 1,
@@ -95,6 +96,7 @@ export default function OwnerPageClient({ companyId }: OwnerPageClientProps) {
         
         if (response.ok) {
           const data = await response.json();
+          // Use account subscription plan from API (ACCOUNT-SCOPED - follows user across all Whops)
           setPlan(data.plan);
           setPermissions(data.permissions);
           

@@ -47,14 +47,14 @@ export default async function Page() {
   // Detect if user is owner/admin
   const { isOwner, role } = await getWhopUser();
   
-  // Get owner's plan and permissions (CRITICAL: Members see features based on owner's plan, not their own)
-  const ownerPlan = await getOwnerPlan(companyId, isOwner);
-  const ownerPermissions = getPlanPermissions(ownerPlan);
+  // Get account subscription (ACCOUNT-SCOPED - follows user across all Whops)
+  const accountPlan = await getAccountSubscription();
+  const accountPermissions = getPlanPermissions(accountPlan);
 
   return (
     <UpgradeClient
-      initialPlan={ownerPlan}
-      initialPermissions={ownerPermissions}
+      initialPlan={accountPlan}
+      initialPermissions={accountPermissions}
       isOwner={isOwner}
       role={role}
       companyId={companyId}
@@ -63,44 +63,36 @@ export default async function Page() {
 }
 
 /**
- * Get owner's plan for a company (SERVER-SIDE ONLY)
+ * Get account subscription plan (ACCOUNT-SCOPED, SERVER-SIDE ONLY)
  * 
- * CRITICAL: Members see features based on owner's plan, not their own plan.
- * This ensures members cannot see features that owner hasn't paid for.
+ * CRITICAL: Plan is tied to USER ACCOUNT, not company_id.
+ * If user purchases Pro/Premium, they have access in ALL Whops they own.
  * 
- * Logic:
- * - If current user is owner/admin → use their plan
- * - If current user is member → default to "free" (most restrictive)
- *   (In production, you might want to store owner plan in DB)
+ * Returns account's active plan from Whop, or "free" if no subscription exists.
  */
-async function getOwnerPlan(companyId: string, isOwner: boolean): Promise<"free" | "premium" | "pro"> {
+async function getAccountSubscription(): Promise<"free" | "premium" | "pro"> {
   try {
-    // If current user is owner/admin, use their plan
-    if (isOwner) {
-      const headersList = await headers();
-      const token = 
-        headersList.get("x-whop-user-token") || 
-        headersList.get("x-whop-token") || 
-        headersList.get("authorization")?.replace("Bearer ", "");
+    const headersList = await headers();
+    const token = 
+      headersList.get("x-whop-user-token") || 
+      headersList.get("x-whop-token") || 
+      headersList.get("authorization")?.replace("Bearer ", "");
 
-      if (!token) {
-        return "free";
-      }
-
-      const { userId } = await whopsdk.verifyUserToken(token);
-      if (!userId) {
-        return "free";
-      }
-
-      return await getUserPlan(userId);
+    if (!token) {
+      return "free";
     }
 
-    // Current user is member → default to free (most restrictive)
-    // This ensures members don't see features owner hasn't paid for
-    // TODO: In production, consider storing owner plan in database
-    return "free";
+    // Verify token and get userId
+    const { userId } = await whopsdk.verifyUserToken(token);
+    if (!userId) {
+      return "free";
+    }
+
+    // Get account subscription plan (account-scoped, not company-scoped)
+    const plan = await getUserPlan(userId);
+    return plan;
   } catch (error) {
-    console.error("Error getting owner plan:", error);
+    console.error("Error getting account subscription:", error);
     return "free";
   }
 }

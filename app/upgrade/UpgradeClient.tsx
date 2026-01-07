@@ -56,7 +56,8 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
   const [isYearly, setIsYearly] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Load plan and permissions (no ownership checks - that's handled server-side)
+  // Load plan and permissions (ACCOUNT-SCOPED - no ownership checks needed)
+  // Also refresh plan periodically to catch subscription updates after purchase
   useEffect(() => {
     const loadPlanPermissions = async () => {
       try {
@@ -68,7 +69,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
           localStorage.setItem("whop_token", whopToken);
         }
         
-        // Get plan and permissions (ownership is handled server-side via routing)
+        // Get account subscription plan (ACCOUNT-SCOPED - follows user across all Whops)
         const response = await fetch("/api/whop/verify", {
           headers: {
             "x-whop-user-token": whopToken || "",
@@ -78,8 +79,7 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
         
         if (response.ok) {
           const data = await response.json();
-          // Note: We use owner's permissions, not member's permissions
-          // This is set server-side in /upgrade/page.tsx
+          // Update plan and permissions from account subscription
           setPlan(data.plan);
           setPermissions(data.permissions);
         }
@@ -89,6 +89,11 @@ export function UpgradeClient({ initialPlan, initialPermissions, isOwner = false
     };
     
     loadPlanPermissions();
+    
+    // Refresh plan every 10 seconds to catch subscription updates after purchase
+    // This ensures plan updates immediately after checkout without page reload
+    const interval = setInterval(loadPlanPermissions, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
